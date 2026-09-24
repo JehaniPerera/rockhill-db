@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class ReceptionHallApplication {
 
+
 	public static void main(String[] args) {
 		SpringApplication.run(ReceptionHallApplication.class, args);
 	}

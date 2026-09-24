@@ -1,0 +1,7 @@
+spring.application.name=reception-hall
+spring.datasource.url=jdbc:mysql://localhost:3306/rockhill
+spring.datasource.username=root
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+server.port=8081
