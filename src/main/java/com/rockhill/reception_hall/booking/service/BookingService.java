@@ -32,6 +32,7 @@ public class BookingService {
         return bookingRepository.findAll();
     }
 
+
     // Get one booking by ID
     public Booking getBookingById(Integer bookingId) {
 
