@@ -21,7 +21,7 @@ public class StaffAssignmentService {
         this.nextId = initialStaff.stream().mapToInt(Staff::id).max().orElse(0) + 1;
     }
 
-    // ---------- Staff records (add / edit / delete) ----------
+    //  Staff records (add / edit / delete)
 
     public Staff addStaff(String name, String role, String type, String contact) {
         validateStaffDetails(name, role, type);
@@ -53,7 +53,7 @@ public class StaffAssignmentService {
         return List.copyOf(allStaff);
     }
 
-    // ---------- Availability (step 3) with optional role filter ----------
+    //  Availability (step 3) with optional role filter 
 
     public List<Staff> getAvailableStaff(LocalDate date) {
         return getAvailableStaff(date, null);
@@ -69,7 +69,7 @@ public class StaffAssignmentService {
                 .toList();
     }
 
-    // ---------- Assign (steps 4-6) ----------
+    // Assign (steps 4-6) 
 
     /**
      * Assigns the selected staff. Busy staff are reported back
@@ -98,7 +98,7 @@ public class StaffAssignmentService {
         return new AssignResult(assigned, unavailable);
     }
 
-    // ---------- Reassign (alternative flow 4a) ----------
+    //  Reassign (alternative flow 4a) 
 
     public boolean reassignStaff(int bookingId, LocalDate date, int oldId, int newId) {
         Map<Integer, Integer> busy = assignmentsByDate.getOrDefault(date, new HashMap<>());
@@ -112,7 +112,7 @@ public class StaffAssignmentService {
         return true;
     }
 
-    // ---------- Remove an assignment ----------
+    //  Remove an assignment 
 
     /** Frees the staff member for that date. Returns false if they were not on this booking. */
     public boolean removeAssignment(int bookingId, LocalDate date, int staffId) {
@@ -134,7 +134,7 @@ public class StaffAssignmentService {
         return result;
     }
 
-    // ---------- Helpers ----------
+    // Helpers
 
     private void validateStaffDetails(String name, String role, String type) {
         if (name == null || name.isBlank()) {
