@@ -11,6 +11,7 @@ public class AddOn {
 
     private String name;
     private Double price;
+    private Boolean includedInPackage;
 
     public Integer getAddonId() { return addonId; }
     public void setAddonId(Integer addonId) { this.addonId = addonId; }
@@ -20,4 +21,7 @@ public class AddOn {
 
     public Double getPrice() { return price; }
     public void setPrice(Double price) { this.price = price; }
+
+    public Boolean getIncludedInPackage() { return includedInPackage; }
+    public void setIncludedInPackage(Boolean includedInPackage) {this.includedInPackage = includedInPackage; }
 }
