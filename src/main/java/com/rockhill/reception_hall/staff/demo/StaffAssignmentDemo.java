@@ -1,157 +1,57 @@
-package com.rockhill.reception_hall.staff;
+package com.rockhill.reception_hall.staff.demo;
 
+import com.rockhill.reception_hall.staff.*;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-public class StaffAssignmentService {
+public class StaffAssignmentDemo {
+    public static void main(String[] args) {
+        List<Staff> staff = new ArrayList<>();
+        staff.add(new Staff(1, "Nimal Senanayake", "Event Coordinator", "Internal", "0771100001"));
+        staff.add(new Staff(2, "Kasun Bandara", "Head Waiter", "Internal", "0771100002"));
+        staff.add(new Staff(3, "Chamari Jayasinghe", "Waitress", "Internal", "0771100003"));
+        staff.add(new Staff(4, "Ruwan Samarasinghe", "Head Cook", "Internal", "0771100004"));
+        staff.add(new Staff(5, "Sampath Rathnayake", "Security", "Internal", "0771100005"));
+        staff.add(new Staff(6, "Dilan Wijesekara", "DJ", "Vendor", "0771100006"));
+        staff.add(new Staff(7, "Udara Flora & Decor", "Decorator", "Vendor", "0771100007"));
+        staff.add(new Staff(8, "Malith Gunasekara", "Waiter", "Internal", "0771100008"));
+        staff.add(new Staff(9, "Helakala Mandapaya", "Dancing Group", "Vendor", "0772200001"));
+        staff.add(new Staff(10, "Helakala Mandapaya", "Jaya Mangala Gatha", "Vendor", "0772200002"));
 
-    private static final Set<String> ROLES = Set.of(
-            "Event Coordinator", "Head Waiter", "Waiter", "Waitress", "Head Cook",
-            "Security", "DJ", "Decorator", "Dancing Group", "Jaya Mangala Gatha");
-    private static final Set<String> TYPES = Set.of("Internal", "Vendor");
+        StaffAssignmentService service = new StaffAssignmentService(staff);
+        LocalDate date = LocalDate.of(2027, 2, 14);
+        int bookingId = 1;
 
-    private final List<Staff> allStaff;
-    private int nextId;
+        System.out.println("Total staff loaded: " + service.getAllStaff().size());
 
-    // eventDate -> (staffId -> bookingId)
-    private final Map<LocalDate, Map<Integer, Integer>> assignmentsByDate = new HashMap<>();
+        // Step 1: Client selects a group of staff/vendors they want for the event
+        List<Integer> clientPicks = List.of(1, 2, 6, 10); // coordinator, waiter, DJ, Jaya Mangala Gatha
+        List<Staff> alreadyBusy = service.clientSelectStaff(bookingId, date, clientPicks);
+        System.out.println("Not available at selection time: " + alreadyBusy);
+        System.out.println("Pending confirmation: " + service.getPendingConfirmations(bookingId, date).size());
 
-    public StaffAssignmentService(List<Staff> initialStaff) {
-        this.allStaff = new ArrayList<>(initialStaff);
-        this.nextId = initialStaff.stream().mapToInt(Staff::id).max().orElse(0) + 1;
-    }
+        // Step 2: After the client confirms the booking, the Manager calls everyone to confirm
+        service.confirmAvailability(bookingId, date, 1, true);   // coordinator available
+        service.confirmAvailability(bookingId, date, 2, true);   // waiter available
+        service.confirmAvailability(bookingId, date, 6, true);   // DJ available
+        service.confirmAvailability(bookingId, date, 10, false); // Jaya Mangala Gatha NOT available
 
-    // ---------- Staff records (add / edit / delete) ----------
+        System.out.println("Still pending: " + service.getPendingConfirmations(bookingId, date).size());
 
-    public Staff addStaff(String name, String role, String type, String contact) {
-        validateStaffDetails(name, role, type);
-        Staff staff = new Staff(nextId++, name.trim(), role, type, contact);
-        allStaff.add(staff);
-        return staff;
-    }
+        // Step 3: Manager finds a replacement for the unavailable one and confirms the new one
+        boolean swapped = service.reassign(bookingId, date, 10, 9); // swap with the other Helakala Mandapaya team
+        service.confirmAvailability(bookingId, date, 9, true);
+        System.out.println("Swapped unavailable staff: " + swapped);
 
-    public Staff updateStaff(int id, String name, String role, String type, String contact) {
-        validateStaffDetails(name, role, type);
-        Staff existing = findStaff(id);
-        Staff updated = new Staff(id, name.trim(), role, type, contact);
-        allStaff.set(allStaff.indexOf(existing), updated);
-        return updated;
-    }
+        System.out.println("Final assignments for booking " + bookingId + ": "
+                + service.getAssignmentsForBooking(bookingId, date).size());
 
-    public void deleteStaff(int id) {
-        Staff staff = findStaff(id);
-        // Deleting someone with upcoming assignments would leave bookings without staff
-        boolean hasAssignments = assignmentsByDate.values().stream()
-                .anyMatch(day -> day.containsKey(id));
-        if (hasAssignments) {
-            throw new IllegalStateException(staff.name() + " has assignments. Remove them first.");
-        }
-        allStaff.remove(staff);
-    }
-
-    public List<Staff> getAllStaff() {
-        return List.copyOf(allStaff);
-    }
-
-    // ---------- Availability (step 3) with optional role filter ----------
-
-    public List<Staff> getAvailableStaff(LocalDate date) {
-        return getAvailableStaff(date, null);
-    }
-
-    /** Role can be null or blank to skip filtering. */
-    public List<Staff> getAvailableStaff(LocalDate date, String role) {
-        Objects.requireNonNull(date, "date is required");
-        Map<Integer, Integer> busy = assignmentsByDate.getOrDefault(date, Map.of());
-        return allStaff.stream()
-                .filter(s -> !busy.containsKey(s.id()))
-                .filter(s -> role == null || role.isBlank() || s.role().equalsIgnoreCase(role))
-                .toList();
-    }
-
-    // ---------- Assign (steps 4-6) ----------
-
-    /**
-     * Assigns the selected staff. Busy staff are reported back
-     * instead of failing the whole request.
-     */
-    public AssignResult assignStaff(int bookingId, LocalDate date, Collection<Integer> selectedIds) {
-        Objects.requireNonNull(date, "date is required");
-        if (selectedIds == null || selectedIds.isEmpty()) {
-            throw new IllegalArgumentException("No staff selected");
-        }
-
-        Map<Integer, Integer> busy = assignmentsByDate.computeIfAbsent(date, d -> new HashMap<>());
-        List<Staff> assigned = new ArrayList<>();
-        List<Staff> unavailable = new ArrayList<>();
-
-        // LinkedHashSet drops duplicate ids but keeps the selection order
-        for (int id : new LinkedHashSet<>(selectedIds)) {
-            Staff staff = findStaff(id);
-            if (busy.containsKey(id)) {
-                unavailable.add(staff);
-            } else {
-                busy.put(id, bookingId);
-                assigned.add(staff);
-            }
-        }
-        return new AssignResult(assigned, unavailable);
-    }
-
-    // ---------- Reassign (alternative flow 4a) ----------
-
-    public boolean reassignStaff(int bookingId, LocalDate date, int oldId, int newId) {
-        Map<Integer, Integer> busy = assignmentsByDate.getOrDefault(date, new HashMap<>());
-        boolean oldIsOnThisBooking = Integer.valueOf(bookingId).equals(busy.get(oldId));
-        if (!oldIsOnThisBooking || busy.containsKey(newId)) {
-            return false;
-        }
-        findStaff(newId); // validates the new id exists
-        busy.remove(oldId); // the previous staff member becomes free again
-        busy.put(newId, bookingId);
-        return true;
-    }
-
-    // ---------- Remove an assignment ----------
-
-    /** Frees the staff member for that date. Returns false if they were not on this booking. */
-    public boolean removeAssignment(int bookingId, LocalDate date, int staffId) {
-        Map<Integer, Integer> busy = assignmentsByDate.get(date);
-        if (busy == null || !Integer.valueOf(bookingId).equals(busy.get(staffId))) {
-            return false;
-        }
-        busy.remove(staffId);
-        return true;
-    }
-
-    public List<Staff> getAssignedStaff(int bookingId, LocalDate date) {
-        List<Staff> result = new ArrayList<>();
-        assignmentsByDate.getOrDefault(date, Map.of()).forEach((staffId, bId) -> {
-            if (bId == bookingId) {
-                result.add(findStaff(staffId));
-            }
-        });
-        return result;
-    }
-
-    // ---------- Helpers ----------
-
-    private void validateStaffDetails(String name, String role, String type) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Name is required");
-        }
-        if (!ROLES.contains(role)) {
-            throw new IllegalArgumentException("Unknown role: " + role);
-        }
-        if (!TYPES.contains(type)) {
-            throw new IllegalArgumentException("Type must be Internal or Vendor");
-        }
-    }
-
-    private Staff findStaff(int id) {
-        return allStaff.stream()
-                .filter(s -> s.id() == id)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Staff not found: " + id));
+        // Reporting-style queries (useful for the DBMS report / viva)
+        System.out.println("\n--- Report Queries ---");
+        System.out.println("Available on " + date + ": " + service.getAvailableStaff(date, null));
+        System.out.println("Confirmed staff for booking: " + service.getConfirmedStaffForBooking(bookingId, date));
+        System.out.println("Unavailable on date: " + service.getUnavailableStaff(date));
+        System.out.println("Assigned to multiple events: " + service.getStaffAssignedToMultipleEvents());
     }
 }
