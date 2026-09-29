@@ -1,0 +1,130 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #F7F3E8;
+    color: #123F2E;
+}
+
+header {
+    background: #F7F3E8;
+    padding: 25px 40px;
+    border-bottom: 1px solid #DDD8C8;
+}
+
+header h1 {
+    text-align: center;
+    font-family: Georgia, serif;
+    font-size: 32px;
+    margin: 0 0 18px;
+}
+
+nav {
+    text-align: center;
+}
+
+nav a {
+    color: #123F2E;
+    text-decoration: none;
+    margin: 0 15px;
+    font-weight: bold;
+}
+
+nav a:hover {
+    color: #D8B565;
+}
+
+.hero {
+    text-align: center;
+    padding: 110px 20px;
+}
+
+.small-title {
+    color: #B48A3A;
+    letter-spacing: 4px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.hero h2 {
+    font-family: Georgia, serif;
+    font-size: 52px;
+    line-height: 1.1;
+    margin: 20px 0;
+}
+
+.hero p {
+    color: #77756C;
+    font-size: 18px;
+}
+
+button {
+    background: #D8B565;
+    color: #123F2E;
+    border: none;
+    padding: 14px 28px;
+    margin: 12px 6px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #123F2E;
+    color: white;
+}
+
+.card {
+    width: 460px;
+    max-width: 90%;
+    margin: 70px auto;
+    background: white;
+    padding: 45px;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(18, 63, 46, 0.08);
+    text-align: center;
+}
+
+.card h2 {
+    font-family: Georgia, serif;
+    font-size: 34px;
+}
+
+.card p {
+    color: #77756C;
+}
+
+.card label {
+    display: block;
+    text-align: left;
+    font-weight: bold;
+    margin-top: 20px;
+}
+
+.card input,
+.card select {
+    width: 100%;
+    padding: 13px;
+    margin: 8px 0 15px;
+    font-size: 16px;
+    border: 1px solid #D8D5C8;
+    border-radius: 8px;
+    background: #FDFCF8;
+}
+
+#result {
+    margin-top: 25px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+
+#bookingMessage {
+    margin-top: 20px;
+    font-weight: bold;
+    font-size: 16px;
+}
