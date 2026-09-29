@@ -13,7 +13,7 @@ public class PackagePricingTier {
     @ManyToOne
     @JoinColumn(name = "package_id", nullable = false)
     private Package pkg;
-    
+
     private Integer tierNumber;
 
     private Integer minGuests;
