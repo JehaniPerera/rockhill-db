@@ -1,20 +1,45 @@
-<!DOCTYPE html>
-<html>
-<head><title>Payments & Billing</title></head>
-<body style="font-family: Arial; max-width: 500px; margin: 40px auto;">
-<h2>Record a Payment</h2>
-<label>Booking ID: <input id="bookingId" type="number" value="1"></label><br><br>
-<button onclick="payDeposit()">Pay Deposit (Rs. 20,000)</button>
-<h3>Result:</h3>
-<pre id="result"></pre>
+package com.rockhill.reception_hall.payment;
 
-<script>
-    async function payDeposit() {
-        const bookingId = document.getElementById('bookingId').value;
-        const res = await fetch(`/api/payments/deposit/${bookingId}`, { method: 'POST' });
-        const data = await res.json();
-        document.getElementById('result').textContent = JSON.stringify(data, null, 2);
-    }
-</script>
-</body>
-</html>
+import org.springframework.web.bind.annotation.*;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/payments")
+public class PaymentController {
+
+private final PaymentService paymentService;
+
+public PaymentController(PaymentService paymentService) {
+this.paymentService = paymentService;
+}
+
+@PostMapping("/deposit/{bookingId}")
+public Payment payDeposit(@PathVariable int bookingId) {
+return paymentService.recordDeposit(bookingId);
+}
+
+@PostMapping("/balance/{bookingId}")
+public Payment payBalance(@PathVariable int bookingId, @RequestParam BigDecimal totalPrice) {
+return paymentService.recordBalance(bookingId, totalPrice);
+}
+
+@PostMapping("/invoice/{bookingId}")
+public Invoice createInvoice(@PathVariable int bookingId) {
+return paymentService.generateInvoice(bookingId);
+}
+
+@PostMapping("/refund/{bookingId}")
+public String refund(@PathVariable int bookingId,
+@RequestParam boolean venueDamaged,
+@RequestParam boolean cancelled) {
+paymentService.processRefund(bookingId, venueDamaged, cancelled);
+return "Refund status updated";
+}
+
+@GetMapping
+public List<Map<String, Object>> getAllPayments() {
+return paymentService.getAllPayments();
+}
+}
