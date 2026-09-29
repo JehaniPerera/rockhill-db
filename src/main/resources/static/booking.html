@@ -1,40 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>New Booking - Rockhill Reception Hall</title>
 
     <link rel="stylesheet" href="css/style.css">
+
 </head>
 
 <body>
 
 <header>
+
     <h1>Rockhill Reception Hall</h1>
 
     <nav>
+
         <a href="index.html">Home</a>
+
         <a href="availability.html">Check Availability</a>
+
         <a href="booking.html">New Booking</a>
+
     </nav>
+
 </header>
+
 
 <main>
 
     <div class="card">
 
-        <p class="small-title">ROCKHILL RECEPTION HALL</p>
+        <p class="small-title">
+            ROCKHILL RECEPTION HALL
+        </p>
 
         <h2>Make a Booking</h2>
 
-        <p>Please enter your event details below.</p>
+        <p>
+            Enter your customer and event details below.
+        </p>
+
+
+        <!-- ============================= -->
+        <!-- Booking Form -->
+        <!-- ============================= -->
 
         <form id="bookingForm">
 
+
             <!-- Customer Name -->
-            <label for="customerName">Customer Name</label>
+
+            <label for="customerName">
+                Customer Name
+            </label>
+
             <input
                     type="text"
                     id="customerName"
@@ -43,8 +68,13 @@
                     required
             >
 
+
             <!-- Phone -->
-            <label for="phone">Phone Number</label>
+
+            <label for="phone">
+                Phone Number
+            </label>
+
             <input
                     type="tel"
                     id="phone"
@@ -53,26 +83,55 @@
                     required
             >
 
+
             <!-- Email -->
-            <label for="email">Email Address</label>
+
+            <label for="email">
+                Email Address
+            </label>
+
             <input
                     type="email"
                     id="email"
                     name="email"
-                    placeholder="Enter your email"
+                    placeholder="Enter your email address"
                     required
             >
 
+
             <!-- Event Type -->
-            <label for="eventType">Event Type</label>
-            <select id="eventType" name="eventType" required>
-                <option value="">Select Event Type</option>
-                <option value="Wedding">Wedding</option>
-                <option value="Other">Other</option>
+
+            <label for="eventType">
+                Event Type
+            </label>
+
+            <select
+                    id="eventType"
+                    name="eventType"
+                    required
+            >
+
+                <option value="">
+                    Select Event Type
+                </option>
+
+                <option value="Wedding">
+                    Wedding
+                </option>
+
+                <option value="Other">
+                    Other
+                </option>
+
             </select>
 
+
             <!-- Event Date -->
-            <label for="eventDate">Event Date</label>
+
+            <label for="eventDate">
+                Event Date
+            </label>
+
             <input
                     type="date"
                     id="eventDate"
@@ -80,21 +139,89 @@
                     required
             >
 
+
             <!-- Guest Count -->
-            <label for="guestCount">Number of Guests</label>
+
+            <label for="guestCount">
+                Number of Guests
+            </label>
+
             <input
                     type="number"
                     id="guestCount"
                     name="guestCount"
-                    placeholder="Enter number of guests"
                     min="1"
+                    placeholder="Enter number of guests"
                     required
             >
 
-            <!-- Submit -->
-            <button type="submit">Submit Booking</button>
+
+            <!-- ============================= -->
+            <!-- Wedding Package -->
+            <!-- ============================= -->
+
+            <div
+                    id="packageSection"
+                    style="display: none;"
+            >
+
+                <label for="packageId">
+                    Package ID
+                </label>
+
+                <input
+                        type="number"
+                        id="packageId"
+                        name="packageId"
+                        min="1"
+                        placeholder="Enter package ID"
+                >
+
+                <p>
+                    Wedding bookings require a package.
+                </p>
+
+            </div>
+
+
+            <!-- ============================= -->
+            <!-- Other Event Menu -->
+            <!-- ============================= -->
+
+            <div
+                    id="menuSection"
+                    style="display: none;"
+            >
+
+                <label for="menuId">
+                    Menu ID
+                </label>
+
+                <input
+                        type="number"
+                        id="menuId"
+                        name="menuId"
+                        min="1"
+                        placeholder="Enter menu ID"
+                >
+
+                <p>
+                    Other events require a menu.
+                </p>
+
+            </div>
+
+
+            <!-- Submit Button -->
+
+            <button type="submit">
+                Submit Booking
+            </button>
 
         </form>
+
+
+        <!-- Booking Result -->
 
         <p id="bookingMessage"></p>
 
@@ -102,7 +229,11 @@
 
 </main>
 
+
+<!-- JavaScript -->
+
 <script src="js/booking.js"></script>
 
 </body>
+
 </html>

@@ -1,13 +1,29 @@
+/* =========================================
+   Rockhill Reception Hall
+   Main Stylesheet
+   ========================================= */
+
+
+/* =========================================
+   General Page Styles
+   ========================================= */
+
 * {
     box-sizing: border-box;
 }
 
 body {
     margin: 0;
+    padding: 0;
     font-family: Arial, sans-serif;
     background: #F7F3E8;
     color: #123F2E;
 }
+
+
+/* =========================================
+   Header
+   ========================================= */
 
 header {
     background: #F7F3E8;
@@ -20,7 +36,13 @@ header h1 {
     font-family: Georgia, serif;
     font-size: 32px;
     margin: 0 0 18px;
+    color: #123F2E;
 }
+
+
+/* =========================================
+   Navigation
+   ========================================= */
 
 nav {
     text-align: center;
@@ -31,11 +53,26 @@ nav a {
     text-decoration: none;
     margin: 0 15px;
     font-weight: bold;
+    transition: color 0.2s ease;
 }
 
 nav a:hover {
     color: #D8B565;
 }
+
+
+/* =========================================
+   Main Content
+   ========================================= */
+
+main {
+    min-height: calc(100vh - 130px);
+}
+
+
+/* =========================================
+   Home Page / Hero Section
+   ========================================= */
 
 .hero {
     text-align: center;
@@ -47,6 +84,7 @@ nav a:hover {
     letter-spacing: 4px;
     font-size: 13px;
     font-weight: bold;
+    margin-bottom: 10px;
 }
 
 .hero h2 {
@@ -54,12 +92,19 @@ nav a:hover {
     font-size: 52px;
     line-height: 1.1;
     margin: 20px 0;
+    color: #123F2E;
 }
 
 .hero p {
     color: #77756C;
     font-size: 18px;
+    margin-bottom: 30px;
 }
+
+
+/* =========================================
+   Buttons
+   ========================================= */
 
 button {
     background: #D8B565;
@@ -71,18 +116,31 @@ button {
     cursor: pointer;
     font-size: 16px;
     font-weight: bold;
+    transition: background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 button:hover {
     background: #123F2E;
-    color: white;
+    color: #FFFFFF;
+    transform: translateY(-1px);
 }
 
+button:active {
+    transform: translateY(0);
+}
+
+
+/* =========================================
+   Cards
+   ========================================= */
+
 .card {
-    width: 460px;
-    max-width: 90%;
-    margin: 70px auto;
-    background: white;
+    width: 520px;
+    max-width: 92%;
+    margin: 60px auto;
+    background: #FFFFFF;
     padding: 45px;
     border-radius: 18px;
     box-shadow: 0 10px 30px rgba(18, 63, 46, 0.08);
@@ -92,39 +150,155 @@ button:hover {
 .card h2 {
     font-family: Georgia, serif;
     font-size: 34px;
+    margin: 12px 0;
+    color: #123F2E;
 }
 
-.card p {
+.card > p:not(#bookingMessage) {
     color: #77756C;
+}
+
+
+/* =========================================
+   Forms
+   ========================================= */
+
+.card form {
+    margin-top: 25px;
 }
 
 .card label {
     display: block;
     text-align: left;
     font-weight: bold;
-    margin-top: 20px;
+    margin-top: 18px;
+    color: #123F2E;
 }
 
 .card input,
 .card select {
     width: 100%;
     padding: 13px;
-    margin: 8px 0 15px;
+    margin: 8px 0 8px;
     font-size: 16px;
     border: 1px solid #D8D5C8;
     border-radius: 8px;
     background: #FDFCF8;
+    color: #123F2E;
+    outline: none;
 }
+
+.card input:focus,
+.card select:focus {
+    border-color: #D8B565;
+    box-shadow: 0 0 0 3px rgba(216, 181, 101, 0.15);
+}
+
+
+/* =========================================
+   Package / Menu Sections
+   ========================================= */
+
+#packageSection,
+#menuSection {
+    text-align: left;
+    margin-top: 8px;
+    padding: 10px 0;
+}
+
+#packageSection p,
+#menuSection p {
+    color: #77756C;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+
+/* =========================================
+   Availability Result
+   ========================================= */
 
 #result {
     margin-top: 25px;
     font-size: 20px;
     font-weight: bold;
+    min-height: 28px;
 }
 
 
+/* =========================================
+   Booking Result
+   ========================================= */
+
 #bookingMessage {
-    margin-top: 20px;
+    margin-top: 25px;
+    font-size: 17px;
     font-weight: bold;
-    font-size: 16px;
+    min-height: 25px;
+}
+
+
+/* =========================================
+   Date Input
+   ========================================= */
+
+input[type="date"] {
+    cursor: pointer;
+}
+
+
+/* =========================================
+   Number Input
+   ========================================= */
+
+input[type="number"] {
+    cursor: text;
+}
+
+
+/* =========================================
+   Responsive Design
+   ========================================= */
+
+@media (max-width: 600px) {
+
+    header {
+        padding: 20px;
+    }
+
+    header h1 {
+        font-size: 26px;
+    }
+
+    nav a {
+        display: inline-block;
+        margin: 6px 8px;
+        font-size: 14px;
+    }
+
+    .hero {
+        padding: 70px 20px;
+    }
+
+    .hero h2 {
+        font-size: 38px;
+    }
+
+    .hero p {
+        font-size: 16px;
+    }
+
+    .card {
+        margin: 40px auto;
+        padding: 30px 22px;
+    }
+
+    .card h2 {
+        font-size: 30px;
+    }
+
+    button {
+        width: 100%;
+        margin: 8px 0;
+    }
 }
