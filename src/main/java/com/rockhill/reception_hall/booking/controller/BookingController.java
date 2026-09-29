@@ -1,5 +1,6 @@
 package com.rockhill.reception_hall.booking.controller;
 
+import com.rockhill.reception_hall.booking.dto.BookingRequest;
 import com.rockhill.reception_hall.booking.model.Booking;
 import com.rockhill.reception_hall.booking.service.BookingService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -8,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -80,5 +80,13 @@ public class BookingController {
                 id,
                 newDate
         );
+    }
+
+    // 7. Create a new booking
+    @PostMapping
+    public Booking createBooking(
+            @RequestBody BookingRequest request) {
+
+        return bookingService.createBooking(request);
     }
 }
