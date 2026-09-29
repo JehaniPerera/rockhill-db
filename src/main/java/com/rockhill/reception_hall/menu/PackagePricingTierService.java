@@ -31,7 +31,7 @@ public class PackagePricingTierService {
     public void deleteTier(Integer id) {
         tierRepository.deleteById(id);
     }
-    
+
     public Optional<PackagePricingTier> findTierForGuestCount(Integer packageId, Integer guestCount) {
         return getTiersForPackage(packageId).stream()
                 .filter(t -> guestCount >= t.getMinGuests() && guestCount <= t.getMaxGuests())
