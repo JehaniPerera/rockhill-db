@@ -5,9 +5,26 @@ import java.time.LocalDate;
 
 public class Payment {
 
-    public enum PaymentType { DEPOSIT, BALANCE }
-    public enum PaymentStatus { PENDING, PARTIALLY_PAID, FULLY_PAID }
-    public enum RefundStatus { NA, FORFEITED, REFUND_DUE, REFUNDED }
+    public enum PaymentType {
+        DEPOSIT("Deposit"), BALANCE("Balance");
+        private final String dbValue;
+        PaymentType(String dbValue) { this.dbValue = dbValue; }
+        public String dbValue() { return dbValue; }
+    }
+
+    public enum PaymentStatus {
+        PENDING("Pending"), PARTIALLY_PAID("Partially Paid"), FULLY_PAID("Fully Paid");
+        private final String dbValue;
+        PaymentStatus(String dbValue) { this.dbValue = dbValue; }
+        public String dbValue() { return dbValue; }
+    }
+
+    public enum RefundStatus {
+        NA("N/A"), FORFEITED("Forfeited"), REFUND_DUE("Refund Due"), REFUNDED("Refunded");
+        private final String dbValue;
+        RefundStatus(String dbValue) { this.dbValue = dbValue; }
+        public String dbValue() { return dbValue; }
+    }
 
     private int paymentId;
     private int bookingId;
