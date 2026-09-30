@@ -1,104 +1,94 @@
 package com.rockhill.reception_hall.staff;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
+@Service
 public class StaffAssignmentService {
 
-    private List<Staff> staffList;
-    private List<Assignment> assignments = new ArrayList<>();
+    @Autowired
+    private StaffRepository staffRepo;
 
-    public StaffAssignmentService(List<Staff> staffList) {
-        this.staffList = staffList;
+    @Autowired
+    private AssignmentRepository assignmentRepo;
+
+    // Not saved to the database yet - pending selections and unavailable marks
+    // live here until the manager confirms someone, at which point a real row
+    // gets written to the StaffAssignment table.
+    // bookingId -> date -> staffId -> status
+    private Map<Integer, Map<LocalDate, Map<Integer, AssignmentStatus>>> pending = new HashMap<>();
+
+    public List<Staff> getAllStaff() {
+        return staffRepo.findAll();
     }
 
-    // ---------- 1. Staff records: add / remove ----------
-
-    /** Adds a new staff or vendor record. */
-    public Staff addStaff(int id, String name, String role, String type, String contact) {
+    public Staff addStaff(String name, String role, String type, String contact) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Name is required");
         }
-        for (Staff s : staffList) {
-            if (s.getId() == id) {
-                throw new IllegalArgumentException("Staff id already exists: " + id);
-            }
+        return staffRepo.save(new Staff(name, role, type, contact));
+    }
+
+    public void deleteStaff(int id) {
+        Staff staff = staffRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Staff not found: " + id));
+        boolean hasConfirmed = assignmentRepo.findAll().stream().anyMatch(a -> a.getStaffId() == id);
+        if (hasConfirmed) {
+            throw new IllegalStateException(staff.getName() + " still has a confirmed assignment, remove that first");
         }
-        Staff staff = new Staff(id, name, role, type, contact);
-        staffList.add(staff);
-        return staff;
+        staffRepo.deleteById(id);
     }
 
-    /** Removes a staff/vendor record. Blocked if they still have an active assignment. */
-    public void removeStaff(int id) {
-        Staff staff = findStaff(id);
-        for (Assignment a : assignments) {
-            if (a.getStaffId() == id && a.getStatus() != AssignmentStatus.UNAVAILABLE) {
-                throw new IllegalStateException(staff.getName() + " still has an active assignment, remove that first");
-            }
-        }
-        staffList.remove(staff);
-    }
-
-    public List<Staff> getAllStaff() {
-        return staffList;
-    }
-
-    // ---------- 2. Client selects a group of staff/vendors for the booking ----------
-
-    /**
-     * Client picks the staff/vendors they want for their event.
-     * This just records the request, it does NOT confirm availability yet.
-     * Returns anyone who was already busy on that date (so they were not added).
-     */
+    // client picks a group of staff/vendors for the booking
     public List<Staff> clientSelectStaff(int bookingId, LocalDate date, List<Integer> staffIds) {
         List<Staff> alreadyBusy = new ArrayList<>();
+        Map<Integer, AssignmentStatus> bucket = pendingBucket(bookingId, date);
+
         for (int staffId : staffIds) {
-            Staff staff = findStaff(staffId);
+            Staff staff = staffRepo.findById(staffId)
+                    .orElseThrow(() -> new IllegalArgumentException("Staff not found: " + staffId));
             if (isBusy(date, staffId)) {
                 alreadyBusy.add(staff);
             } else {
-                assignments.add(new Assignment(bookingId, date, staffId, AssignmentStatus.PENDING_CONFIRMATION));
+                bucket.put(staffId, AssignmentStatus.PENDING_CONFIRMATION);
             }
         }
         return alreadyBusy;
     }
 
-    // ---------- 3. Manager contacts everyone and confirms availability ----------
-
-    /** Manager calls one person/vendor and records whether they are actually available. */
+    // manager calls one person and records the real answer
     public void confirmAvailability(int bookingId, LocalDate date, int staffId, boolean isAvailable) {
-        Assignment a = findAssignment(bookingId, date, staffId);
-        if (a == null) {
+        Map<Integer, AssignmentStatus> bucket = pendingBucket(bookingId, date);
+        if (!bucket.containsKey(staffId)) {
             throw new IllegalArgumentException("No pending selection found for this staff member");
         }
-        a.setStatus(isAvailable ? AssignmentStatus.CONFIRMED : AssignmentStatus.UNAVAILABLE);
+        if (isAvailable) {
+            bucket.remove(staffId);
+            assignmentRepo.save(new Assignment(bookingId, staffId, date)); // now saved for real
+        } else {
+            bucket.put(staffId, AssignmentStatus.UNAVAILABLE);
+        }
     }
 
-    /** Everyone still waiting on a manager phone call for this booking. */
-    public List<Assignment> getPendingConfirmations(int bookingId, LocalDate date) {
-        List<Assignment> result = new ArrayList<>();
-        for (Assignment a : assignments) {
-            if (a.getBookingId() == bookingId && a.getDate().equals(date)
-                    && a.getStatus() == AssignmentStatus.PENDING_CONFIRMATION) {
-                result.add(a);
+    // everyone linked to this booking+date, whatever their current status
+    public List<AssignmentView> getAssignmentsForBooking(int bookingId, LocalDate date) {
+        List<AssignmentView> result = new ArrayList<>();
+        for (Assignment a : assignmentRepo.findByBookingId(bookingId)) {
+            if (a.getDate().equals(date)) {
+                result.add(new AssignmentView(a.getStaffId(), AssignmentStatus.CONFIRMED));
             }
         }
+        pendingBucket(bookingId, date).forEach((staffId, status) ->
+                result.add(new AssignmentView(staffId, status)));
         return result;
     }
 
-    // ---------- Shared: availability, reassign, remove ----------
-
-    /** Staff who are free on the date (no pending or confirmed assignment). Pass role = null for all roles. */
     public List<Staff> getAvailableStaff(LocalDate date, String role) {
         List<Staff> result = new ArrayList<>();
-        for (Staff s : staffList) {
-            boolean roleOk = role == null || s.getRole().equalsIgnoreCase(role);
+        for (Staff s : staffRepo.findAll()) {
+            boolean roleOk = role == null || role.isBlank() || s.getRole().equalsIgnoreCase(role);
             if (roleOk && !isBusy(date, s.getId())) {
                 result.add(s);
             }
@@ -106,103 +96,92 @@ public class StaffAssignmentService {
         return result;
     }
 
-    /** Staff who are busy (pending or confirmed) on the given date. */
     public List<Staff> getUnavailableStaff(LocalDate date) {
         List<Staff> result = new ArrayList<>();
-        for (Staff s : staffList) {
-            if (isBusy(date, s.getId())) {
-                result.add(s);
-            }
+        for (Staff s : staffRepo.findAll()) {
+            if (isBusy(date, s.getId())) result.add(s);
         }
         return result;
     }
 
-    /** Staff confirmed (not just pending) for a specific booking and date. */
     public List<Staff> getConfirmedStaffForBooking(int bookingId, LocalDate date) {
         List<Staff> result = new ArrayList<>();
-        for (Assignment a : assignments) {
-            if (a.getBookingId() == bookingId && a.getDate().equals(date)
-                    && a.getStatus() == AssignmentStatus.CONFIRMED) {
-                result.add(findStaff(a.getStaffId()));
+        for (Assignment a : assignmentRepo.findByBookingId(bookingId)) {
+            if (a.getDate().equals(date)) {
+                staffRepo.findById(a.getStaffId()).ifPresent(result::add);
             }
         }
         return result;
     }
 
-    /** Staff who are linked (pending or confirmed) to more than one booking overall. */
     public List<Staff> getStaffAssignedToMultipleEvents() {
         Map<Integer, Set<Integer>> bookingsPerStaff = new HashMap<>();
-        for (Assignment a : assignments) {
-            if (a.getStatus() != AssignmentStatus.UNAVAILABLE) {
-                bookingsPerStaff.computeIfAbsent(a.getStaffId(), k -> new HashSet<>()).add(a.getBookingId());
-            }
+        for (Assignment a : assignmentRepo.findAll()) {
+            bookingsPerStaff.computeIfAbsent(a.getStaffId(), k -> new HashSet<>()).add(a.getBookingId());
         }
         List<Staff> result = new ArrayList<>();
-        for (Map.Entry<Integer, Set<Integer>> entry : bookingsPerStaff.entrySet()) {
-            if (entry.getValue().size() > 1) {
-                result.add(findStaff(entry.getKey()));
+        for (Map.Entry<Integer, Set<Integer>> e : bookingsPerStaff.entrySet()) {
+            if (e.getValue().size() > 1) {
+                staffRepo.findById(e.getKey()).ifPresent(result::add);
             }
         }
         return result;
     }
 
-    /** Replace oldId with newId on the same booking (e.g. an unavailable vendor gets swapped). */
+    // swap oldId for newId on the same booking+date
     public boolean reassign(int bookingId, LocalDate date, int oldId, int newId) {
-        Assignment old = findAssignment(bookingId, date, oldId);
-        if (old == null || isBusy(date, newId)) {
+        Map<Integer, AssignmentStatus> bucket = pendingBucket(bookingId, date);
+        AssignmentId dbId = new AssignmentId(bookingId, oldId);
+
+        boolean wasPendingOrUnavailable = bucket.containsKey(oldId);
+        boolean wasConfirmedInDb = assignmentRepo.existsById(dbId);
+
+        if (!wasPendingOrUnavailable && !wasConfirmedInDb) {
             return false;
         }
-        assignments.remove(old); // old staff member becomes free again
-        assignments.add(new Assignment(bookingId, date, newId, AssignmentStatus.PENDING_CONFIRMATION));
+        if (isBusy(date, newId)) {
+            return false;
+        }
+        if (wasConfirmedInDb) {
+            assignmentRepo.deleteById(dbId);
+        }
+        bucket.remove(oldId);
+        bucket.put(newId, AssignmentStatus.PENDING_CONFIRMATION);
         return true;
     }
 
+    // remove someone from a booking, whatever their current status
     public boolean removeAssignment(int bookingId, LocalDate date, int staffId) {
-        Assignment a = findAssignment(bookingId, date, staffId);
-        if (a == null) {
-            return false;
+        Map<Integer, AssignmentStatus> bucket = pendingBucket(bookingId, date);
+        AssignmentId dbId = new AssignmentId(bookingId, staffId);
+
+        boolean removed = false;
+        if (bucket.remove(staffId) != null) removed = true;
+        if (assignmentRepo.existsById(dbId)) {
+            assignmentRepo.deleteById(dbId);
+            removed = true;
         }
-        assignments.remove(a);
-        return true;
+        return removed;
     }
 
-    public List<Assignment> getAssignmentsForBooking(int bookingId, LocalDate date) {
-        List<Assignment> result = new ArrayList<>();
-        for (Assignment a : assignments) {
-            if (a.getBookingId() == bookingId && a.getDate().equals(date)) {
-                result.add(a);
-            }
-        }
-        return result;
+    private Map<Integer, AssignmentStatus> pendingBucket(int bookingId, LocalDate date) {
+        return pending
+                .computeIfAbsent(bookingId, k -> new HashMap<>())
+                .computeIfAbsent(date, k -> new HashMap<>());
     }
 
-    // ---------- Helpers ----------
-
+    // busy = confirmed in the database OR pending in memory, on this date, for ANY booking.
+    // Being marked unavailable does NOT count as busy.
     private boolean isBusy(LocalDate date, int staffId) {
-        for (Assignment a : assignments) {
-            if (a.getDate().equals(date) && a.getStaffId() == staffId
-                    && a.getStatus() != AssignmentStatus.UNAVAILABLE) {
+        for (Assignment a : assignmentRepo.findByDate(date)) {
+            if (a.getStaffId() == staffId) return true;
+        }
+        for (Map<LocalDate, Map<Integer, AssignmentStatus>> byDate : pending.values()) {
+            Map<Integer, AssignmentStatus> bucket = byDate.get(date);
+            if (bucket != null && bucket.get(staffId) == AssignmentStatus.PENDING_CONFIRMATION) {
                 return true;
             }
         }
         return false;
-    }
-
-    private Assignment findAssignment(int bookingId, LocalDate date, int staffId) {
-        for (Assignment a : assignments) {
-            if (a.getBookingId() == bookingId && a.getDate().equals(date) && a.getStaffId() == staffId) {
-                return a;
-            }
-        }
-        return null;
-    }
-
-    private Staff findStaff(int id) {
-        for (Staff s : staffList) {
-            if (s.getId() == id) {
-                return s;
-            }
-        }
-        throw new IllegalArgumentException("Staff not found: " + id);
     }
 }

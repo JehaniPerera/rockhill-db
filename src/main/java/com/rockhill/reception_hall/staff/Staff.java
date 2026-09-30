@@ -1,14 +1,24 @@
 package com.rockhill.reception_hall.staff;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "Staff")
 public class Staff {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "staff_id")
     private int id;
+
     private String name;
     private String role;
     private String type;
     private String contact;
 
-    public Staff(int id, String name, String role, String type, String contact) {
-        this.id = id;
+    protected Staff() { }
+
+    public Staff(String name, String role, String type, String contact) {
         this.name = name;
         this.role = role;
         this.type = type;

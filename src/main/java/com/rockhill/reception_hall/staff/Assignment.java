@@ -1,23 +1,33 @@
 package com.rockhill.reception_hall.staff;
 
+import jakarta.persistence.*;
 import java.time.LocalDate;
 
+@Entity
+@Table(name = "StaffAssignment")
+@IdClass(AssignmentId.class)
 public class Assignment {
-    private int bookingId;
-    private LocalDate date;
-    private int staffId;
-    private AssignmentStatus status;
 
-    public Assignment(int bookingId, LocalDate date, int staffId, AssignmentStatus status) {
+    @Id
+    @Column(name = "booking_id")
+    private int bookingId;
+
+    @Id
+    @Column(name = "staff_id")
+    private int staffId;
+
+    @Column(name = "assigned_date")
+    private LocalDate date;
+
+    protected Assignment() { }
+
+    public Assignment(int bookingId, int staffId, LocalDate date) {
         this.bookingId = bookingId;
-        this.date = date;
         this.staffId = staffId;
-        this.status = status;
+        this.date = date;
     }
 
     public int getBookingId() { return bookingId; }
-    public LocalDate getDate() { return date; }
     public int getStaffId() { return staffId; }
-    public AssignmentStatus getStatus() { return status; }
-    public void setStatus(AssignmentStatus status) { this.status = status; }
+    public LocalDate getDate() { return date; }
 }
