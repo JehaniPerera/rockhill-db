@@ -1,45 +1,56 @@
-package com.rockhill.reception_hall.payment;
+<!DOCTYPE html>
+<html>
+<head><title>Payments & Billing</title></head>
+<body style="font-family: Arial; max-width: 600px; margin: 40px auto;">
+<h2>Payments & Billing</h2>
 
-import org.springframework.web.bind.annotation.*;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
+<label>Booking ID: <input id="bookingId" type="number" value="1"></label>
+<br><br>
 
-@RestController
-@RequestMapping("/api/payments")
-public class PaymentController {
+<button onclick="payDeposit()">1. Pay Deposit (Rs. 20,000)</button>
+<br><br>
 
-private final PaymentService paymentService;
+<label>Total Price: <input id="totalPrice" type="number" value="590000"></label>
+<button onclick="payBalance()">2. Pay Balance</button>
+<br><br>
 
-public PaymentController(PaymentService paymentService) {
-this.paymentService = paymentService;
-}
+<button onclick="generateInvoice()">3. Generate Invoice</button>
+<br><br>
 
-@PostMapping("/deposit/{bookingId}")
-public Payment payDeposit(@PathVariable int bookingId) {
-return paymentService.recordDeposit(bookingId);
-}
+<label><input id="venueDamaged" type="checkbox"> Venue Damaged</label>
+<label><input id="cancelled" type="checkbox"> Booking Cancelled</label>
+<button onclick="processRefund()">4. Process Refund</button>
 
-@PostMapping("/balance/{bookingId}")
-public Payment payBalance(@PathVariable int bookingId, @RequestParam BigDecimal totalPrice) {
-return paymentService.recordBalance(bookingId, totalPrice);
-}
+<h3>Result:</h3>
+<pre id="result" style="background:#f4f4f4; padding:10px; border-radius:5px;"></pre>
 
-@PostMapping("/invoice/{bookingId}")
-public Invoice createInvoice(@PathVariable int bookingId) {
-return paymentService.generateInvoice(bookingId);
-}
-
-@PostMapping("/refund/{bookingId}")
-public String refund(@PathVariable int bookingId,
-@RequestParam boolean venueDamaged,
-@RequestParam boolean cancelled) {
-paymentService.processRefund(bookingId, venueDamaged, cancelled);
-return "Refund status updated";
-}
-
-@GetMapping
-public List<Map<String, Object>> getAllPayments() {
-return paymentService.getAllPayments();
-}
-}
+<script>
+    function showResult(data) {
+        document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+    }
+    async function payDeposit() {
+        const bookingId = document.getElementById('bookingId').value;
+        const res = await fetch(`/api/payments/deposit/${bookingId}`, { method: 'POST' });
+        showResult(await res.json());
+    }
+    async function payBalance() {
+        const bookingId = document.getElementById('bookingId').value;
+        const totalPrice = document.getElementById('totalPrice').value;
+        const res = await fetch(`/api/payments/balance/${bookingId}?totalPrice=${totalPrice}`, { method: 'POST' });
+        showResult(await res.json());
+    }
+    async function generateInvoice() {
+        const bookingId = document.getElementById('bookingId').value;
+        const res = await fetch(`/api/payments/invoice/${bookingId}`, { method: 'POST' });
+        showResult(await res.json());
+    }
+    async function processRefund() {
+        const bookingId = document.getElementById('bookingId').value;
+        const venueDamaged = document.getElementById('venueDamaged').checked;
+        const cancelled = document.getElementById('cancelled').checked;
+        const res = await fetch(`/api/payments/refund/${bookingId}?venueDamaged=${venueDamaged}&cancelled=${cancelled}`, { method: 'POST' });
+        document.getElementById('result').textContent = await res.text();
+    }
+</script>
+</body>
+</html>
