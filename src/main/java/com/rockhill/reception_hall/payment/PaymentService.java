@@ -56,6 +56,13 @@ public class PaymentService {
     }
 
     public Invoice generateInvoice(int bookingId) {
+        List<Invoice> existing = jdbcTemplate.query(
+                "SELECT invoice_id, booking_id, total_amount, issue_date FROM Invoice WHERE booking_id = ?",
+                (rs, i) -> new Invoice(rs.getInt("invoice_id"), rs.getInt("booking_id"),
+                        rs.getBigDecimal("total_amount"), rs.getDate("issue_date").toLocalDate()),
+                bookingId);
+        if (!existing.isEmpty()) return existing.get(0);
+
         BigDecimal totalPrice = jdbcTemplate.queryForObject(
                 "SELECT total_price FROM Booking WHERE booking_id = ?",
                 BigDecimal.class, bookingId);
@@ -84,6 +91,18 @@ public class PaymentService {
         jdbcTemplate.update(
                 "UPDATE Payment SET refund_status = ? WHERE booking_id = ? AND payment_type = 'Deposit'",
                 newStatus.dbValue(), bookingId);
+    }
+    public List<Map<String, Object>> getBookings() {
+        return jdbcTemplate.queryForList(
+                "SELECT b.booking_id, c.name AS customer_name, b.event_type, b.event_date, " +
+                        "b.guest_count, b.status, b.total_price, b.venue_damaged " +
+                        "FROM Booking b JOIN Customer c ON b.customer_id = c.customer_id " +
+                        "ORDER BY b.booking_id");
+    }
+
+    public List<Map<String, Object>> getPaymentHistory(int bookingId) {
+        return jdbcTemplate.queryForList(
+                "SELECT * FROM Payment WHERE booking_id = ? ORDER BY payment_id", bookingId);
     }
 
     public List<Map<String, Object>> getAllPayments() {
