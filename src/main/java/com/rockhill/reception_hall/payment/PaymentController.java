@@ -37,7 +37,15 @@ public class PaymentController {
         paymentService.processRefund(bookingId, venueDamaged, cancelled);
         return "Refund status updated";
     }
+    @GetMapping("/bookings")
+    public List<Map<String, Object>> getBookings() {
+        return paymentService.getBookings();
+    }
 
+    @GetMapping("/history/{bookingId}")
+    public List<Map<String, Object>> getHistory(@PathVariable int bookingId) {
+        return paymentService.getPaymentHistory(bookingId);
+    }
     @GetMapping
     public List<Map<String, Object>> getAllPayments() {
         return paymentService.getAllPayments();
