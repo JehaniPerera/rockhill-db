@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hall Administrator - Payments &amp; Billing</title>
+    <style>
+        :root{--ink:#1b2430;--muted:#5d6877;--bg:#f2f4f7;--card:#fff;--line:#d5dbe3;--accent:#1f5e52;--ok:#1e6b3a;--err:#a32d2d}
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
+        main{max-width:780px;margin:0 auto;padding:28px 16px 48px}
+        h1{font-size:22px;margin:0 0 4px}
+        .sub{color:var(--muted);margin:0 0 20px}
+        .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+        label{display:block;font-weight:600;margin-bottom:6px}
+        select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff}
+        dl{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;margin:0}
+        dt{color:var(--muted)} dd{margin:0;font-weight:600}
+        .actions{display:flex;gap:10px;flex-wrap:wrap}
+        button{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}
+        button.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+        button:disabled{opacity:.45;cursor:not-allowed}
+        button:focus-visible,select:focus-visible{outline:3px solid #7fb5a8;outline-offset:2px}
+        #msg{margin-top:12px;font-weight:600;min-height:1.5em}
+        .ok{color:var(--ok)} .err{color:var(--err)}
+        h2{font-size:16px;margin:0 0 10px}
+        .wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
+        th{color:var(--muted);font-weight:600}
+        .empty{color:var(--muted)}
+    </style>
+</head>
+<body>
+<main>
+    <h1>Payments &amp; Billing</h1>
+    <p class="sub">Hall Administrator</p>
+
+    <section class="panel">
+        <label for="bookingSelect">Booking</label>
+        <select id="bookingSelect" onchange="selectBooking()"></select>
+    </section>
+
+    <section class="panel">
+        <div id="details" class="empty">Loading booking...</div>
+        <div class="actions" style="margin-top:16px">
+            <button id="btnInvoice" onclick="act('/api/payments/invoice/', 'Invoice generated.')">Generate invoice</button>
+            <button id="btnRefund" class="secondary" onclick="act('/api/payments/refund/', 'Refund processed.', b => '?venueDamaged=' + !!b.venue_damaged + '&cancelled=' + (b.status === 'Cancelled'))">Process refund</button>
+        </div>
+        <div id="msg" role="status"></div>
+    </section>
+
+    <section class="panel">
+        <h2>Payment history</h2>
+        <div class="wrap">
+            <table>
+                <thead><tr><th>ID</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th><th>Refund</th></tr></thead>
+                <tbody id="history"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    const $ = id => document.getElementById(id);
+    const rs = n => 'Rs. ' + Number(n).toLocaleString();
+    let bookings = [];
+
+    function say(text, cls) { const m = $('msg'); m.textContent = text; m.className = cls || ''; }
+
+    async function call(path, method) {
+        const res = await fetch(path, { method: method || 'GET' });
+        const text = await res.text();
+        if (!res.ok) throw new Error(res.status + ' on ' + path + (text ? ' - ' + text.slice(0, 120) : ''));
+        try { return JSON.parse(text); } catch (e) { return text; }
+    }
+
+    async function loadBookings(keep) {
+        try {
+            const data = await call('/api/payments/bookings');
+            if (!Array.isArray(data)) throw new Error('Unexpected reply from /api/payments/bookings');
+            bookings = data;
+        } catch (e) {
+            bookings = [];
+            say('Could not load bookings: ' + e.message, 'err');
+        }
+        $('bookingSelect').innerHTML = bookings.length
+            ? bookings.map(b => `<option value="${b.booking_id}">#${b.booking_id} - ${b.customer_name} - ${b.event_date} - ${b.status}</option>`).join('')
+            : '<option value="">No bookings available</option>';
+        if (keep) $('bookingSelect').value = keep;
+        await showBooking();
+    }
+
+    function selected() {
+        const id = $('bookingSelect').value;
+        return bookings.find(b => String(b.booking_id) === String(id));
+    }
+
+    function selectBooking() { say(''); showBooking(); }
+
+    async function showBooking() {
+        const b = selected();
+        $('btnInvoice').disabled = $('btnRefund').disabled = !b;
+        if (!b) {
+            $('details').className = 'empty';
+            $('details').textContent = 'Select a booking to see its details.';
+            $('history').innerHTML = '';
+            return;
+        }
+        $('details').className = '';
+        $('details').innerHTML = `<dl>
+      <dt>Customer</dt><dd>${b.customer_name}</dd>
+      <dt>Event</dt><dd>${b.event_type} on ${b.event_date} (${b.guest_count} guests)</dd>
+      <dt>Status</dt><dd>${b.status}</dd>
+      <dt>Total price</dt><dd>${rs(b.total_price)}</dd>
+      <dt>Venue damaged</dt><dd>${b.venue_damaged ? 'Yes' : 'No'}</dd></dl>`;
+        await loadHistory(b.booking_id);
+    }
+
+    async function loadHistory(id) {
+        const body = $('history');
+        try {
+            const rows = await call('/api/payments/history/' + id);
+            if (!Array.isArray(rows)) throw new Error('Unexpected reply');
+            body.innerHTML = rows.length ? rows.map(p => `<tr>
+        <td>${p.payment_id}</td><td>${p.payment_type}</td><td>${rs(p.amount)}</td>
+        <td>${p.payment_date}</td><td>${p.payment_status}</td><td>${p.refund_status}</td></tr>`).join('')
+                : '<tr><td colspan="6" class="empty">No payments recorded for this booking.</td></tr>';
+        } catch (e) {
+            body.innerHTML = `<tr><td colspan="6" class="err">Could not load history: ${e.message}</td></tr>`;
+        }
+    }
+
+    async function act(path, okText, extra) {
+        const b = selected();
+        if (!b) return;
+        try {
+            const r = await call(path + b.booking_id + (extra ? extra(b) : ''), 'POST');
+            say(typeof r === 'string' && r ? r : okText, 'ok');
+        } catch (e) {
+            say(e.message, 'err');
+            return;
+        }
+        await loadBookings(b.booking_id);
+    }
+
+    loadBookings();
+</script>
+</body>
+</html>
