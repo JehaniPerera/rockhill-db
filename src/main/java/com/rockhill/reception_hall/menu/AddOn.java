@@ -11,7 +11,12 @@ public class AddOn {
 
     private String name;
     private Double price;
-    private Boolean includedInPackage;
+    private Boolean includedInPackage = false;
+    
+    private String unitType = "per item";
+
+    @Column(name = "is_wedding_exclusive")
+    private Boolean isWeddingExclusive = false;
 
     public Integer getAddonId() { return addonId; }
     public void setAddonId(Integer addonId) { this.addonId = addonId; }
@@ -23,5 +28,11 @@ public class AddOn {
     public void setPrice(Double price) { this.price = price; }
 
     public Boolean getIncludedInPackage() { return includedInPackage; }
-    public void setIncludedInPackage(Boolean includedInPackage) {this.includedInPackage = includedInPackage; }
+    public void setIncludedInPackage(Boolean includedInPackage) { this.includedInPackage = includedInPackage; }
+
+    public String getUnitType() { return unitType; }
+    public void setUnitType(String unitType) { this.unitType = unitType; }
+
+    public Boolean getIsWeddingExclusive() { return isWeddingExclusive; }
+    public void setIsWeddingExclusive(Boolean isWeddingExclusive) { this.isWeddingExclusive = isWeddingExclusive; }
 }
