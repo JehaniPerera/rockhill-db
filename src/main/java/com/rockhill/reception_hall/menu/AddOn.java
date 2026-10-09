@@ -12,7 +12,7 @@ public class AddOn {
     private String name;
     private Double price;
     private Boolean includedInPackage = false;
-    
+
     private String unitType = "per item";
 
     @Column(name = "is_wedding_exclusive")
