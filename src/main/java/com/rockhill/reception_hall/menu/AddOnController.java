@@ -2,7 +2,6 @@ package com.rockhill.reception_hall.menu;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -12,8 +11,11 @@ public class AddOnController {
     private AddOnService addOnService;
 
     @GetMapping
-    public List<AddOn> getAllAddOns() {
-        return addOnService.getAllAddOns();
+    public List<AddOn> getAllAddOns(@RequestParam(required = false) String eventType) {
+        if (eventType == null) {
+            return addOnService.getAllAddOns();
+        }
+        return addOnService.getAddOnsForEventType(eventType);
     }
 
     @GetMapping("/{id}")
@@ -23,6 +25,12 @@ public class AddOnController {
 
     @PostMapping
     public AddOn createAddOn(@RequestBody AddOn addOn) {
+        return addOnService.saveAddOn(addOn);
+    }
+
+    @PutMapping("/{id}")
+    public AddOn updateAddOn(@PathVariable Integer id, @RequestBody AddOn addOn) {
+        addOn.setAddonId(id);
         return addOnService.saveAddOn(addOn);
     }
 
