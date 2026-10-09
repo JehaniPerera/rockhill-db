@@ -12,10 +12,10 @@ public class DecorOption {
 
     private String category;
     private String name;
-
-    // NEW: decor now has its own price. Weddings never pay for decor at
-    // all (it's part of the package); non-wedding events always do.
     private Double price;
+
+    @Column(name = "is_singular")
+    private Boolean isSingular = false;
 
     public Integer getDecorId() { return decorId; }
     public void setDecorId(Integer decorId) { this.decorId = decorId; }
@@ -28,4 +28,7 @@ public class DecorOption {
 
     public Double getPrice() { return price; }
     public void setPrice(Double price) { this.price = price; }
+
+    public Boolean getIsSingular() { return isSingular; }
+    public void setIsSingular(Boolean isSingular) { this.isSingular = isSingular; }
 }
