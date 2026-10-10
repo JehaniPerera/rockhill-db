@@ -16,7 +16,7 @@ public class AddOnService {
     }
 
     public List<AddOn> getAddOnsForEventType(String eventType) {
-        if ("Wedding".equals(eventType)) {
+        if ("Wedding".equalsIgnoreCase(eventType)) {
             return addOnRepository.findAll();
         }
         return addOnRepository.findAll().stream()
