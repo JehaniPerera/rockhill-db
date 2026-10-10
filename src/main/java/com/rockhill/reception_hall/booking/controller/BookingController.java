@@ -1,10 +1,12 @@
 package com.rockhill.reception_hall.booking.controller;
 
-import com.rockhill.reception_hall.booking.dto.BookingRequest;
-import com.rockhill.reception_hall.booking.model.Booking;
+import com.rockhill.reception_hall.booking.dto.*;
+import com.rockhill.reception_hall.booking.model.*;
 import com.rockhill.reception_hall.booking.service.BookingService;
-import org.springframework.format.annotation.DateTimeFormat;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -12,81 +14,87 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
-@CrossOrigin
 public class BookingController {
+    private final BookingService service;
+    public BookingController(BookingService service) { this.service = service; }
 
-    private final BookingService bookingService;
-
-    public BookingController(BookingService bookingService) {
-        this.bookingService = bookingService;
-    }
-
-    // 1. Check venue availability
     @GetMapping("/availability")
-    public Map<String, Object> checkAvailability(
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate date) {
-
-        boolean available =
-                bookingService.isVenueAvailable(date);
-
-        return Map.of(
-                "date", date,
-                "available", available
-        );
+    public Map<String, Object> availability(@RequestParam LocalDate date) {
+        return Map.of("date", date, "available", service.isDateAvailable(date));
     }
 
-    // 2. Get all bookings
-    @GetMapping
-    public List<Booking> getAllBookings() {
-
-        return bookingService.getAllBookings();
+    @PostMapping("/wedding") @ResponseStatus(HttpStatus.CREATED)
+    public BookingResponse createWedding(@Valid @RequestBody BookingRequest r) {
+        return BookingResponse.from(service.createPending(withType(r, EventType.WEDDING)));
     }
 
-    // 3. Get booking by ID
+    @PostMapping("/event") @ResponseStatus(HttpStatus.CREATED)
+    public BookingResponse createEvent(@Valid @RequestBody BookingRequest r) {
+        if (r.eventType() == EventType.WEDDING)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use the wedding booking page for weddings");
+        return BookingResponse.from(service.createPending(r));
+    }
+
+    @GetMapping("/by-phone")
+    public List<BookingResponse> byPhone(@RequestParam String phone) {
+        return service.byPhone(phone.trim()).stream().map(BookingResponse::from).toList();
+    }
+
     @GetMapping("/{id}")
-    public Booking getBookingById(
-            @PathVariable Integer id) {
+    public BookingResponse get(@PathVariable Long id) { return BookingResponse.from(service.get(id)); }
 
-        return bookingService.getBookingById(id);
+    @GetMapping
+    public List<BookingResponse> list(@RequestParam(required = false) BookingStatus status,
+                                      @RequestParam(required = false) Long customerId) {
+        List<Booking> l = customerId != null ? service.byCustomer(customerId)
+                : service.byStatus(status == null ? BookingStatus.PENDING : status);
+        return l.stream().map(BookingResponse::from).toList();
     }
 
-    // 4. Confirm booking
-    @PutMapping("/{id}/confirm")
-    public Booking confirmBooking(
-            @PathVariable Integer id) {
-
-        return bookingService.confirmBooking(id);
+    @PutMapping("/{id}/package/{packageId}")
+    public BookingResponse pkg(@PathVariable Long id, @PathVariable Long packageId) {
+        return BookingResponse.from(service.attachPackage(id, packageId));
+    }
+    @PutMapping("/{id}/menu/{menuId}")
+    public BookingResponse menu(@PathVariable Long id, @PathVariable Long menuId) {
+        return BookingResponse.from(service.attachMenu(id, menuId));
+    }
+    @PutMapping("/{id}/addons")
+    public BookingResponse addOns(@PathVariable Long id, @RequestBody List<Long> ids) {
+        return BookingResponse.from(service.setAddOns(id, ids));
+    }
+    @PutMapping("/{id}/decor")
+    public BookingResponse decor(@PathVariable Long id, @RequestBody List<Long> ids) {
+        return BookingResponse.from(service.setDecor(id, ids));
     }
 
-    // 5. Cancel booking
-    @PutMapping("/{id}/cancel")
-    public Booking cancelBooking(
-            @PathVariable Integer id) {
+    @PostMapping("/{id}/submit")
+    public BookingResponse submit(@PathVariable Long id) { return BookingResponse.from(service.submit(id)); }
 
-        return bookingService.cancelBooking(id);
+    @PostMapping("/{id}/confirm")
+    public BookingResponse confirm(@PathVariable Long id) { return BookingResponse.from(service.confirm(id)); }
+
+    @PostMapping("/{id}/reject")
+    public BookingResponse reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return BookingResponse.from(service.reject(id, body.get("reason")));
     }
 
-    // 6. Reschedule booking
-    @PutMapping("/{id}/reschedule")
-    public Booking rescheduleBooking(
-            @PathVariable Integer id,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate newDate) {
-
-        return bookingService.rescheduleBooking(
-                id,
-                newDate
-        );
+    @PostMapping("/{id}/reschedule")
+    public BookingResponse reschedule(@PathVariable Long id, @RequestParam LocalDate newDate,
+                                      @RequestParam(defaultValue = "true") boolean byCustomer) {
+        return BookingResponse.from(service.reschedule(id, newDate, byCustomer));
     }
 
-    // 7. Create a new booking
-    @PostMapping
-    public Booking createBooking(
-            @RequestBody BookingRequest request) {
+    @PostMapping("/{id}/cancel")
+    public BookingResponse cancel(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+        return BookingResponse.from(service.cancel(id, body == null ? null : body.get("reason")));
+    }
 
-        return bookingService.createBooking(request);
+    @PostMapping("/{id}/complete")
+    public BookingResponse complete(@PathVariable Long id) { return BookingResponse.from(service.markCompleted(id)); }
+
+    private BookingRequest withType(BookingRequest r, EventType t) {
+        return new BookingRequest(r.customerName(), r.customerPhone(), r.customerEmail(),
+                r.eventDate(), t, r.guestCount());
     }
 }

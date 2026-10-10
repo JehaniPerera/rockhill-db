@@ -1,21 +1,14 @@
-package com.rockhill.reception_hall.booking.repository;
+package com.rockhill.reception_hall.booking.dto;
 
-import com.rockhill.reception_hall.booking.model.Booking;
-import com.rockhill.reception_hall.booking.model.BookingStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-
+import com.rockhill.reception_hall.booking.model.EventType;
+import jakarta.validation.constraints.*;
 import java.time.LocalDate;
-import java.util.List;
 
-public interface BookingRepository
-        extends JpaRepository<Booking, Integer> {
-
-    List<Booking> findByEventDate(LocalDate eventDate);
-
-    List<Booking> findByStatusIn(List<BookingStatus> statuses);
-
-    boolean existsByEventDateAndStatusNot(
-            LocalDate eventDate,
-            BookingStatus status
-    );
+public record BookingRequest(
+        @NotBlank String customerName,
+        @NotBlank String customerPhone,
+        @Email String customerEmail,
+        @NotNull @Future LocalDate eventDate,
+        @NotNull EventType eventType,
+        @Min(1) int guestCount) {
 }

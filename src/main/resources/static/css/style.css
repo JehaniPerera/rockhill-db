@@ -302,3 +302,5 @@ input[type="number"] {
         margin: 8px 0;
     }
 }
+.checks input[type=number] { width: 80px; margin-left: auto; }
+.checks label span { flex: 1; }

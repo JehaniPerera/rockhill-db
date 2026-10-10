@@ -1,27 +1,18 @@
 package com.rockhill.reception_hall.booking.model;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 
 @Entity
-@Table(name = "OtherEventBooking")
-@PrimaryKeyJoinColumn(name = "booking_id")
+@Table(name = "other_event_booking")
 public class OtherEventBooking extends Booking {
+    private Long menuId;      // catering menu (Function 2)
 
-    @Column(name = "menu_id", nullable = false)
-    private Integer menuId;
-
-    public OtherEventBooking() {
-        super();
+    protected OtherEventBooking() {}
+    public OtherEventBooking(Customer customer, LocalDate eventDate, EventType type, int guestCount) {
+        super(customer, eventDate, type, guestCount);
     }
-
-    public Integer getMenuId() {
-        return menuId;
-    }
-
-    public void setMenuId(Integer menuId) {
-        this.menuId = menuId;
-    }
+    public Long getMenuId() { return menuId; }
+    public void setMenuId(Long menuId) { this.menuId = menuId; touch(); }
 }
