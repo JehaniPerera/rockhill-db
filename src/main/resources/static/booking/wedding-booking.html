@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wedding Booking</title>
+    <link rel="stylesheet" href="/booking/css/style.css">
+</head>
+<body>
+<header>
+    <h1>Rockhill Reception Hall &amp; Caterers</h1>
+    <nav>
+        <a href="/booking/index.html">Home</a>
+        <a href="/booking/wedding-booking.html">Wedding booking</a>
+        <a href="/booking/event-booking.html">Event booking</a>
+        <a href="/booking/my-bookings.html">My bookings</a>
+        <a href="/booking/admin.html">Admin</a>
+    </nav>
+</header>
+<main>
+    <div class="card">
+        <h2>Wedding booking</h2>
+        <div class="row">
+            <div><label for="customerName">Your name</label><input id="customerName" maxlength="100"></div>
+            <div><label for="customerPhone">Phone</label><input id="customerPhone" maxlength="15"></div>
+        </div>
+        <label for="customerEmail">Email</label><input id="customerEmail" type="email">
+        <div class="row">
+            <div><label for="eventDate">Event date</label><input id="eventDate" type="date"></div>
+            <div><label for="guestCount">Number of guests (100 - 300)</label><input id="guestCount" type="number" min="1"></div>
+        </div>
+        <button class="btn secondary" id="checkBtn" type="button">Check availability</button>
+    </div>
+
+    <div class="card">
+        <h2>Choose a wedding package</h2>
+        <div id="selectionList">Loading...</div>
+        <button class="btn" id="holdBtn" type="button">Hold my date</button>
+    </div>
+
+    <div id="extras" class="hidden">
+        <div class="card"><h2>Add-ons</h2><div id="addonList">Loading...</div></div>
+    </div>
+
+    <div class="card hidden" id="estimateCard">
+        <h2>Price estimate</h2>
+        <table><tbody id="estimate"></tbody></table>
+        <p><small>The estimate is not final. Payments (deposit and balance) are handled after confirmation.</small></p>
+    </div>
+
+    <div class="card">
+        <button class="btn hidden" id="submitBtn" type="button">Submit request</button>
+        <button class="btn danger hidden" id="discardBtn" type="button">Discard draft</button>
+        <div id="msg" class="msg"></div>
+    </div>
+</main>
+<script src="/booking/js/common.js"></script>
+<script src="/booking/js/booking-flow.js"></script>
+<script>initBookingPage('WEDDING');</script>
+</body>
+</html>
