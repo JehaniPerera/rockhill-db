@@ -30,6 +30,14 @@ public class PaymentRepository {
         return rows.stream().findFirst();
     }
 
+    // true when the event is less than 14 days away (the client's "pay everything at once" rule)
+    public boolean isWithinBalanceWindow(int bookingId) {
+        Integer days = jdbc.queryForObject(
+                "SELECT DATEDIFF(event_date, CURDATE()) FROM Booking WHERE booking_id = ?",
+                Integer.class, bookingId);
+        return days != null && days < 14;
+    }
+
     public int countPayments(int bookingId, Payment.PaymentType type) {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND payment_type = ?",
@@ -54,8 +62,8 @@ public class PaymentRepository {
         return p;
     }
 
-    public void updateBookingStatus(int bookingId, String status) {
-        jdbc.update("UPDATE Booking SET status = ? WHERE booking_id = ?", status, bookingId);
+    public void confirmBooking(int bookingId) {
+        jdbc.update("UPDATE Booking SET status = 'Confirmed' WHERE booking_id = ? AND status = 'Pending'", bookingId);
     }
 
     public void updateDepositRefundStatus(int bookingId, Payment.RefundStatus status) {
@@ -67,10 +75,27 @@ public class PaymentRepository {
         return jdbc.queryForList(
                 "SELECT b.booking_id, c.name AS customer_name, b.event_type, " +
                         "DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
-                        "DATE_FORMAT(DATE_SUB(b.event_date, INTERVAL 14 DAY), '%Y-%m-%d') AS balance_due_date, " +
-                        "b.guest_count, b.status, b.total_price, b.venue_damaged " +
+                        "DATE_FORMAT(GREATEST(DATE_SUB(b.event_date, INTERVAL 14 DAY), CURDATE()), '%Y-%m-%d') AS balance_due_date, " +
+                        "(DATEDIFF(b.event_date, CURDATE()) < 14) AS late_booking, " +
+                        "b.guest_count, b.status, b.total_price, b.venue_damaged, " +
+                        "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Deposit') AS deposit_paid, " +
+                        "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Balance') AS balance_paid, " +
+                        "(SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.booking_id = b.booking_id) AS paid_total, " +
+                        "(SELECT COUNT(*) FROM Invoice i WHERE i.booking_id = b.booking_id) AS has_invoice " +
                         "FROM Booking b JOIN Customer c ON b.customer_id = c.customer_id " +
                         "ORDER BY b.booking_id");
+    }
+
+    public Optional<Map<String, Object>> findInvoiceDetails(int bookingId) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT i.invoice_id, i.total_amount, DATE_FORMAT(i.issue_date, '%Y-%m-%d') AS issue_date, " +
+                        "b.booking_id, b.event_type, DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, b.guest_count, " +
+                        "c.name AS customer_name, c.phone AS customer_phone " +
+                        "FROM Invoice i " +
+                        "JOIN Booking b ON i.booking_id = b.booking_id " +
+                        "JOIN Customer c ON b.customer_id = c.customer_id " +
+                        "WHERE i.booking_id = ?", bookingId);
+        return rows.stream().findFirst();
     }
 
     public List<Map<String, Object>> findHistory(int bookingId) {

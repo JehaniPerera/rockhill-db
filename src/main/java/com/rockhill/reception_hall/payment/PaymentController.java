@@ -1,7 +1,8 @@
 package com.rockhill.reception_hall.payment;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.math.BigDecimal;
+
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +22,13 @@ public class PaymentController {
     }
 
     @PostMapping("/balance/{bookingId}")
-    public Payment payBalance(@PathVariable int bookingId, @RequestParam BigDecimal totalPrice) {
-        return paymentService.recordBalance(bookingId, totalPrice);
+    public Payment payBalance(@PathVariable int bookingId) {
+        return paymentService.recordBalance(bookingId);
+    }
+
+    @PostMapping("/full/{bookingId}")
+    public String payFull(@PathVariable int bookingId) {
+        return paymentService.recordFullPayment(bookingId);
     }
 
     @PostMapping("/invoice/{bookingId}")
@@ -30,13 +36,16 @@ public class PaymentController {
         return paymentService.generateInvoice(bookingId);
     }
 
-    @PostMapping("/refund/{bookingId}")
-    public String refund(@PathVariable int bookingId,
-                         @RequestParam boolean venueDamaged,
-                         @RequestParam boolean cancelled) {
-        paymentService.processRefund(bookingId, venueDamaged, cancelled);
-        return "Refund status updated";
+    @GetMapping("/invoice/{bookingId}")
+    public Map<String, Object> viewInvoice(@PathVariable int bookingId) {
+        return paymentService.getInvoiceDetails(bookingId);
     }
+
+    @PostMapping("/refund/{bookingId}")
+    public String refund(@PathVariable int bookingId) {
+        return paymentService.processRefund(bookingId);
+    }
+
     @GetMapping("/bookings")
     public List<Map<String, Object>> getBookings() {
         return paymentService.getBookings();
@@ -46,8 +55,15 @@ public class PaymentController {
     public List<Map<String, Object>> getHistory(@PathVariable int bookingId) {
         return paymentService.getPaymentHistory(bookingId);
     }
+
     @GetMapping
     public List<Map<String, Object>> getAllPayments() {
         return paymentService.getAllPayments();
+    }
+
+    // every business-rule error (wrong status, already paid, booking not found) becomes a 400 with a readable message
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleBusinessRule(IllegalStateException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
 }

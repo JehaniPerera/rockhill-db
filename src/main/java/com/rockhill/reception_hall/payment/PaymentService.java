@@ -1,14 +1,9 @@
 package com.rockhill.reception_hall.payment;
 
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -16,96 +11,142 @@ import java.util.Map;
 @Service
 public class PaymentService {
 
-    private final JdbcTemplate jdbcTemplate;
-    private static final BigDecimal DEPOSIT_AMOUNT = new BigDecimal("20000.00");
+    static final BigDecimal DEPOSIT_AMOUNT = new BigDecimal("20000.00");
 
-    public PaymentService(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    // false = the Rs. 20,000 is a separate refundable deposit, paid in addition to the full price
+    //         (balance = full total; cancellation or venue damage forfeits the deposit)
+    // true  = the deposit counts toward the price (balance = total - deposit)
+    static final boolean DEPOSIT_COUNTS_TOWARD_PRICE = false;
+
+    private final PaymentRepository payments;
+    private final InvoiceRepository invoices;
+
+    public PaymentService(PaymentRepository payments, InvoiceRepository invoices) {
+        this.payments = payments;
+        this.invoices = invoices;
     }
 
     public Payment recordDeposit(int bookingId) {
-        return insertPayment(bookingId, DEPOSIT_AMOUNT, Payment.PaymentType.DEPOSIT,
-                Payment.PaymentStatus.PARTIALLY_PAID, Payment.RefundStatus.NA);
+        BookingInfo booking = requireBooking(bookingId);
+        if (!"Pending".equals(booking.status()) && !"Confirmed".equals(booking.status())) {
+            throw new IllegalStateException("Deposit cannot be paid for a " + booking.status() + " booking");
+        }
+        if (payments.isWithinBalanceWindow(bookingId)) {
+            throw new IllegalStateException("The event is less than 14 days away: the full amount must be paid at once");
+        }
+        if (payments.countPayments(bookingId, Payment.PaymentType.DEPOSIT) > 0) {
+            throw new IllegalStateException("Deposit already paid for this booking");
+        }
+        Payment p = payments.save(newPayment(bookingId, DEPOSIT_AMOUNT,
+                Payment.PaymentType.DEPOSIT, Payment.PaymentStatus.PARTIALLY_PAID));
+        payments.confirmBooking(bookingId);
+        return p;
     }
 
-    public Payment recordBalance(int bookingId, BigDecimal totalPrice) {
-        BigDecimal balance = totalPrice.subtract(DEPOSIT_AMOUNT);
-        return insertPayment(bookingId, balance, Payment.PaymentType.BALANCE,
-                Payment.PaymentStatus.FULLY_PAID, Payment.RefundStatus.NA);
+    public Payment recordBalance(int bookingId) {
+        BookingInfo booking = requireBooking(bookingId);
+        if (!"Confirmed".equals(booking.status())) {
+            throw new IllegalStateException("Balance can only be paid for a Confirmed booking (current status: " + booking.status() + ")");
+        }
+        if (payments.countPayments(bookingId, Payment.PaymentType.DEPOSIT) == 0) {
+            throw new IllegalStateException("Pay the deposit first");
+        }
+        if (payments.countPayments(bookingId, Payment.PaymentType.BALANCE) > 0) {
+            throw new IllegalStateException("Balance already paid for this booking");
+        }
+        return payments.save(newPayment(bookingId, balanceAmount(booking),
+                Payment.PaymentType.BALANCE, Payment.PaymentStatus.FULLY_PAID));
     }
 
-    private Payment insertPayment(int bookingId, BigDecimal amount, Payment.PaymentType type,
-                                  Payment.PaymentStatus status, Payment.RefundStatus refundStatus) {
-        String sql = "INSERT INTO Payment (booking_id, amount, payment_type, payment_date, payment_status, refund_status) VALUES (?, ?, ?, ?, ?, ?)";
-        LocalDate today = LocalDate.now();
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            ps.setInt(1, bookingId);
-            ps.setBigDecimal(2, amount);
-            ps.setString(3, type.dbValue());
-            ps.setDate(4, Date.valueOf(today));
-            ps.setString(5, status.dbValue());
-            ps.setString(6, refundStatus.dbValue());
-            return ps;
-        }, keyHolder);
-
-        int newId = keyHolder.getKey().intValue();
-        return new Payment(newId, bookingId, amount, type, today, status, refundStatus);
+    // late booking rule: deposit and full balance are paid together, in one step
+    @Transactional
+    public String recordFullPayment(int bookingId) {
+        BookingInfo booking = requireBooking(bookingId);
+        if (!"Pending".equals(booking.status()) && !"Confirmed".equals(booking.status())) {
+            throw new IllegalStateException("Payment cannot be made for a " + booking.status() + " booking");
+        }
+        if (payments.countPayments(bookingId, Payment.PaymentType.DEPOSIT) > 0) {
+            throw new IllegalStateException("Deposit already paid for this booking");
+        }
+        payments.save(newPayment(bookingId, DEPOSIT_AMOUNT,
+                Payment.PaymentType.DEPOSIT, Payment.PaymentStatus.PARTIALLY_PAID));
+        payments.confirmBooking(bookingId);
+        payments.save(newPayment(bookingId, balanceAmount(booking),
+                Payment.PaymentType.BALANCE, Payment.PaymentStatus.FULLY_PAID));
+        return "Full amount paid. Your booking is confirmed.";
     }
 
     public Invoice generateInvoice(int bookingId) {
-        List<Invoice> existing = jdbcTemplate.query(
-                "SELECT invoice_id, booking_id, total_amount, issue_date FROM Invoice WHERE booking_id = ?",
-                (rs, i) -> new Invoice(rs.getInt("invoice_id"), rs.getInt("booking_id"),
-                        rs.getBigDecimal("total_amount"), rs.getDate("issue_date").toLocalDate()),
-                bookingId);
-        if (!existing.isEmpty()) return existing.get(0);
-
-        BigDecimal totalPrice = jdbcTemplate.queryForObject(
-                "SELECT total_price FROM Booking WHERE booking_id = ?",
-                BigDecimal.class, bookingId);
-
-        String sql = "INSERT INTO Invoice (booking_id, total_amount, issue_date) VALUES (?, ?, ?)";
-        LocalDate today = LocalDate.now();
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            ps.setInt(1, bookingId);
-            ps.setBigDecimal(2, totalPrice);
-            ps.setDate(3, Date.valueOf(today));
-            return ps;
-        }, keyHolder);
-
-        int newId = keyHolder.getKey().intValue();
-        return new Invoice(newId, bookingId, totalPrice, today);
+        BookingInfo booking = requireBooking(bookingId);
+        if ("Cancelled".equals(booking.status())) {
+            throw new IllegalStateException("No invoice can be issued for a Cancelled booking");
+        }
+        if (payments.countPayments(bookingId, Payment.PaymentType.BALANCE) == 0) {
+            throw new IllegalStateException("Balance must be paid before an invoice is issued");
+        }
+        return invoices.findByBookingId(bookingId).orElseGet(() ->
+                invoices.save(new Invoice(0, bookingId, booking.totalPrice(), LocalDate.now())));
     }
 
-    public void processRefund(int bookingId, boolean venueDamaged, boolean cancelled) {
-        Payment.RefundStatus newStatus = (cancelled || venueDamaged)
-                ? Payment.RefundStatus.FORFEITED
-                : Payment.RefundStatus.REFUNDED;
-
-        jdbcTemplate.update(
-                "UPDATE Payment SET refund_status = ? WHERE booking_id = ? AND payment_type = 'Deposit'",
-                newStatus.dbValue(), bookingId);
+    public Map<String, Object> getInvoiceDetails(int bookingId) {
+        return payments.findInvoiceDetails(bookingId)
+                .orElseThrow(() -> new IllegalStateException("No invoice has been generated for this booking yet"));
     }
+
+    public String processRefund(int bookingId) {
+        BookingInfo booking = requireBooking(bookingId);
+        String status = booking.status();
+        if (!"Cancelled".equals(status) && !"Completed".equals(status)) {
+            throw new IllegalStateException("Refund can only be processed for a Cancelled or Completed booking (current status: " + status + ")");
+        }
+        if (payments.countPayments(bookingId, Payment.PaymentType.DEPOSIT) == 0) {
+            throw new IllegalStateException("No deposit payment found for this booking");
+        }
+
+        Payment.RefundStatus result;
+        String message;
+        if ("Cancelled".equals(status)) {
+            result = Payment.RefundStatus.FORFEITED;
+            message = "Booking was cancelled: deposit forfeited.";
+        } else if (DEPOSIT_COUNTS_TOWARD_PRICE) {
+            result = Payment.RefundStatus.NA;
+            message = "Deposit was part of the price: nothing to refund.";
+        } else if (booking.venueDamaged()) {
+            result = Payment.RefundStatus.FORFEITED;
+            message = "Venue was damaged: deposit forfeited.";
+        } else {
+            result = Payment.RefundStatus.REFUNDED;
+            message = "No damage: deposit refunded.";
+        }
+        payments.updateDepositRefundStatus(bookingId, result);
+        return message;
+    }
+
+    private BigDecimal balanceAmount(BookingInfo booking) {
+        return DEPOSIT_COUNTS_TOWARD_PRICE
+                ? booking.totalPrice().subtract(DEPOSIT_AMOUNT)
+                : booking.totalPrice();
+    }
+
+    private BookingInfo requireBooking(int bookingId) {
+        return payments.findBooking(bookingId)
+                .orElseThrow(() -> new IllegalStateException("Booking not found"));
+    }
+
+    private Payment newPayment(int bookingId, BigDecimal amount,
+                               Payment.PaymentType type, Payment.PaymentStatus status) {
+        return new Payment(0, bookingId, amount, type, LocalDate.now(), status, Payment.RefundStatus.NA);
+    }
+
     public List<Map<String, Object>> getBookings() {
-        return jdbcTemplate.queryForList(
-                "SELECT b.booking_id, c.name AS customer_name, b.event_type, b.event_date, " +
-                        "b.guest_count, b.status, b.total_price, b.venue_damaged " +
-                        "FROM Booking b JOIN Customer c ON b.customer_id = c.customer_id " +
-                        "ORDER BY b.booking_id");
+        return payments.findBookingSummaries();
     }
 
     public List<Map<String, Object>> getPaymentHistory(int bookingId) {
-        return jdbcTemplate.queryForList(
-                "SELECT * FROM Payment WHERE booking_id = ? ORDER BY payment_id", bookingId);
+        return payments.findHistory(bookingId);
     }
 
     public List<Map<String, Object>> getAllPayments() {
-        return jdbcTemplate.queryForList("SELECT * FROM Payment ORDER BY payment_id");
+        return payments.findAll();
     }
 }
