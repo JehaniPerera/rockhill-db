@@ -22,14 +22,14 @@ public abstract class Booking {
     @Column(name = "event_date", nullable = false)
     private LocalDate eventDate;
 
-    @Convert(converter = EventTypeConverter.class)
+    @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false)
     private EventType eventType;
 
     @Column(name = "guest_count", nullable = false)
     private int guestCount;
 
-    @Convert(converter = BookingStatusConverter.class)
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private BookingStatus status = BookingStatus.PENDING;
 

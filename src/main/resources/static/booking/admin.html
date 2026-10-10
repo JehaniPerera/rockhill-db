@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin - Bookings</title>
+    <link rel="stylesheet" href="/booking/css/style.css">
+</head>
+<body>
+<header>
+    <h1>Rockhill Reception Hall &amp; Caterers</h1>
+    <nav>
+        <a href="/booking/index.html">Home</a>
+        <a href="/booking/wedding-booking.html">Wedding booking</a>
+        <a href="/booking/event-booking.html">Event booking</a>
+        <a href="/booking/my-bookings.html">My bookings</a>
+        <a href="/booking/admin.html">Admin</a>
+    </nav>
+</header>
+<main>
+    <div class="card">
+        <h2>Booking management</h2>
+        <label for="status">Show bookings with status</label>
+        <select id="status">
+            <option value="PENDING">Pending (submitted requests)</option>
+            <option value="CONFIRMED">Confirmed</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="CANCELLED">Cancelled</option>
+        </select>
+        <div id="msg" class="msg"></div>
+    </div>
+    <div class="card">
+        <table>
+            <thead><tr><th>#</th><th>Customer</th><th>Date</th><th>Type</th><th>Guests</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody id="rows"></tbody>
+        </table>
+    </div>
+</main>
+<script src="/booking/js/common.js"></script>
+<script>
+    const statusSel = document.getElementById('status');
+    async function load() {
+        try {
+            const list = await api('/api/bookings?status=' + statusSel.value);
+            const body = document.getElementById('rows');
+            body.innerHTML = '';
+            if (!list.length) { const tr = document.createElement('tr'); tr.appendChild(cell('No bookings.')); body.appendChild(tr); return; }
+            list.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.appendChild(cell(b.id));
+                tr.appendChild(cell(b.customerName));
+                tr.appendChild(cell(b.eventDate));
+                tr.appendChild(cell(b.eventType === 'WEDDING' ? 'Wedding' : 'Other'));
+                tr.appendChild(cell(b.guestCount));
+                tr.appendChild(statusCell(b.status));
+                let note = '';
+                if (b.status === 'CONFIRMED') note = 'Deposit due ' + b.depositDueDate + ', balance due ' + b.balanceDueDate;
+                if (b.status === 'CANCELLED') note = b.cancellationReason || '';
+                if (b.status === 'COMPLETED') note = b.venueDamaged ? 'Venue damaged' : 'No damage';
+                tr.appendChild(cell(note));
+                const td = document.createElement('td');
+                if (b.status === 'PENDING') {
+                    td.appendChild(actionButton('Confirm', () => act(b.id, 'confirm')));
+                    td.appendChild(actionButton('Reject', () => reject(b.id), 'danger'));
+                }
+                if (b.status === 'CONFIRMED') {
+                    td.appendChild(actionButton('Reschedule', () => reschedule(b.id)));
+                    td.appendChild(actionButton('Mark completed', () => complete(b.id)));
+                    td.appendChild(actionButton('Cancel', () => cancel(b.id), 'danger'));
+                }
+                tr.appendChild(td);
+                body.appendChild(tr);
+            });
+        } catch (e) { showMsg('msg', e.message); }
+    }
+    async function call(path, options, okText) {
+        clearMsg('msg');
+        try { await api(path, options); await load(); showMsg('msg', okText, 'success'); }
+        catch (e) { showMsg('msg', e.message); }
+    }
+    function act(id, action) { return call('/api/bookings/' + id + '/' + action, { method: 'POST' }, 'Booking #' + id + ' ' + action + 'ed.'); }
+    function reject(id) {
+        const reason = prompt('Reason for rejecting (required):');
+        if (!reason) return;
+        return call('/api/bookings/' + id + '/reject', { method: 'POST', body: JSON.stringify({ reason: reason }) }, 'Booking #' + id + ' rejected.');
+    }
+    function cancel(id) {
+        const reason = prompt('Reason for cancelling:');
+        if (reason === null) return;
+        return call('/api/bookings/' + id + '/cancel', { method: 'POST', body: JSON.stringify({ reason: reason }) }, 'Booking #' + id + ' cancelled.');
+    }
+    function reschedule(id) {
+        const d = prompt('New event date (YYYY-MM-DD):');
+        if (!d) return;
+        return call('/api/bookings/' + id + '/reschedule?newDate=' + encodeURIComponent(d) + '&byCustomer=false', { method: 'POST' }, 'Booking #' + id + ' rescheduled.');
+    }
+    function complete(id) {
+        const dmg = confirm('Was the venue damaged?\n\nOK = YES (deposit is kept)\nCancel = NO (deposit is refunded)');
+        return call('/api/bookings/' + id + '/complete?venueDamaged=' + dmg, { method: 'POST' }, 'Booking #' + id + ' marked completed.');
+    }
+    statusSel.addEventListener('change', load);
+    load();
+</script>
+</body>
+</html>
