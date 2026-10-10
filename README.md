@@ -1,21 +1,40 @@
-# rockhill-db
-reception hall booking and management system
+# Rockhill Hall Booking - Function 3: Staff & Vendor Assignment
+Author: Perera L.D.U.J (IT25300121) - SE2012 Group 26
+Spring Boot 3 (Java 17) + Spring Data JPA + MySQL. Layered: controller -> service -> repository -> entity.
 
-## Getting Started
+## 1. Setup (in this order)
+1. In MySQL Workbench run the group script `OOAD_Rockhill_Database.sql` (creates DB `rockhill` + sample data).
+2. Then run `sql/StaffAvailability.sql` (adds the StaffAvailability table + a unique key).
+3. Put your MySQL password in `src/main/resources/application.properties`.
+4. Run `HallBookingApplication` (or `mvn spring-boot:run`). Hibernate does NOT touch the tables (`ddl-auto=none`).
+5. Test with Postman at `http://localhost:8080`.
 
-1. Clone the repo and open the folder in IntelliJ **as a Project** (not "Open as File").
-2. Wait for Maven to finish resolving dependencies (progress bar at the bottom).
-3. Install and start a local MySQL-compatible server — XAMPP's MySQL or standalone MySQL both work. Each person runs their own; this is not shared between machines.
-4. In MySQL Workbench (or phpMyAdmin), run `00_setup.sql` against your local server. Confirm a `rockhill` schema/database now exists.
-5. Copy `src/main/resources/application.properties.example` to a new file named `application.properties` in the same folder. Fill in your own DB username/password if different from the example. This file is personal per machine — don't commit it.
-6. Open `ReceptionHallApplication.java` and click the green ▶️ run button. Look for `Started ReceptionHallApplication` in the console with no red errors.
-7. Visit `http://localhost:8081` in a browser — a "Whitelabel Error Page" is expected and means it's working.
+## 2. Endpoints (try these with the group sample data)
 
-## Code structure
-Each person's function lives in its own package under `src/main/java/com/rockhill/receptionhall/` — for example `menu`, `booking`, `staff`, `billing`. Don't put your code in someone else's package.
+| Use case | Method & URL | Body |
+|---|---|---|
+| 1. Create staff | `POST /api/staff` | `{"name":"Amal","role":"Waiter","type":"Internal","contact":"0771100099"}` |
+| Update / delete / list | `PUT /api/staff/{id}`, `DELETE /api/staff/{id}`, `GET /api/staff`, `GET /api/staff/{id}` | |
+| 2. Mark unavailable | `POST /api/staff/4/unavailable-dates` | `{"date":"2026-12-25","reason":"Leave"}` |
+| Reverse the mark | `DELETE /api/staff/4/unavailable-dates/2026-12-25` | |
+| List marks | `GET /api/staff/4/unavailable-dates` | |
+| 3. Available staff | `GET /api/bookings/5/assignments/available-staff?role=Waiter` | |
+| Assign | `POST /api/bookings/5/assignments` | `{"staffIds":[2,4]}` |
+| Reassign (replace staff 4) | `PUT /api/bookings/5/assignments/4` | `{"newStaffId":8}` -> 409, 8 is already on booking 5 |
+| List assignments | `GET /api/bookings/5/assignments` | |
 
-## Git workflow
-- `git pull` before you start working each session.
-- Prefer your own branch: `git checkout -b feature/your-function-name`.
-- Commit small, working chunks with clear messages.
-- `git push`, then merge into `main` once it runs cleanly for you.
+`type` is `Internal` or `Vendor`; dates are `yyyy-MM-dd`.
+Booking 5 (Confirmed, 2026-11-14) is a good test booking. Bookings 7, 8, 9 are Pending -> assigning gives 400.
+Marking staff 1 unavailable on 2026-10-24 gives 409 (confirmed assignment on booking 4).
+
+## 3. Matches the report
+- Use case 1: name/role/type validation (alt. 3a -> 400); delete blocked if linked to an assignment (alt. 4a -> 409).
+- Use case 2: warns (409) if a CONFIRMED assignment exists that date (alt. 3a); mark can be reversed (alt. 5a).
+- Use case 3: only Confirmed bookings; lists staff free on the event date; assignment blocks that date for the person; reassign frees the old person; assigned staff "notified" (logged by `LoggingNotificationService`).
+
+## 4. Merging with teammates
+- `entity/Booking.java` is a read-only stub: delete it and use Kawmadee's real Booking entity
+  (same table `Booking`; needs bookingId, eventDate, status). Delete `BookingRepository` if she has one.
+- Cancel Booking (Function 1) should call `StaffAssignmentService.releaseForBooking(bookingId)`
+  (the SQL already deletes assignments if a booking row is deleted).
+- Keep ONE pom.xml / application.properties / main class for the whole group.
