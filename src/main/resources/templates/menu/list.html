@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Manage Menus')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <h1>Menu Catalog</h1>
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Price per guest</th><th>Action</th></tr>
+        <tr th:each="m : ${menus}">
+            <td th:text="${m.menuId}"></td>
+            <td th:text="${m.name}"></td>
+            <td th:text="${m.pricePerGuest}"></td>
+            <td>
+                <form th:action="@{/admin/menus/{id}/delete(id=${m.menuId})}" method="post">
+                    <button type="submit" class="btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Add a new menu</h2>
+    <form class="form-row" th:action="@{/admin/menus}" th:object="${newMenu}" method="post">
+        <input type="text" th:field="*{name}" placeholder="Menu name" required>
+        <input type="number" step="0.01" th:field="*{pricePerGuest}" placeholder="Price per guest" required>
+        <button type="submit">Add Menu</button>
+    </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Our Menus')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <h1>Choose Your Menu</h1>
+    <div class="cards">
+        <div class="card" th:each="m : ${menus}">
+            <h3 th:text="${m.name}"></h3>
+            <p class="price">Rs. <span th:text="${m.pricePerGuest}"></span> per guest</p>
+        </div>
+    </div>
+</main>
+</body>
+</html>
