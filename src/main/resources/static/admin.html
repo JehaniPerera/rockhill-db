@@ -7,6 +7,7 @@
     <style>
         :root{--ink:#1b2430;--muted:#5d6877;--bg:#f2f4f7;--card:#fff;--line:#d5dbe3;--accent:#1f5e52;--ok:#1e6b3a;--err:#a32d2d}
         *{box-sizing:border-box}
+        [hidden]{display:none !important}
         body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
         main{max-width:780px;margin:0 auto;padding:28px 16px 48px}
         h1{font-size:22px;margin:0 0 4px}
@@ -14,15 +15,21 @@
         .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
         label{display:block;font-weight:600;margin-bottom:6px}
         select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff}
-        dl{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;margin:0}
+        dl{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;margin:0}
         dt{color:var(--muted)} dd{margin:0;font-weight:600}
         .actions{display:flex;gap:10px;flex-wrap:wrap}
-        button{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}
-        button.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+        button,.btnlink{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
+        button.secondary,.btnlink{background:#fff;color:var(--accent);border:1px solid var(--accent)}
         button:disabled{opacity:.45;cursor:not-allowed}
-        button:focus-visible,select:focus-visible{outline:3px solid #7fb5a8;outline-offset:2px}
+        button:focus-visible,select:focus-visible,.btnlink:focus-visible{outline:3px solid #7fb5a8;outline-offset:2px}
         #msg{margin-top:12px;font-weight:600;min-height:1.5em}
+        #hint{margin-top:8px;color:var(--muted);font-size:14px}
         .ok{color:var(--ok)} .err{color:var(--err)}
+        .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600}
+        .b-green{background:#e3f3e8;color:var(--ok)}
+        .b-amber{background:#fdf0d5;color:#8a5a00}
+        .b-red{background:#f8e0e0;color:var(--err)}
+        .b-grey{background:#e8ebef;color:var(--muted)}
         h2{font-size:16px;margin:0 0 10px}
         .wrap{overflow-x:auto}
         table{width:100%;border-collapse:collapse}
@@ -44,9 +51,11 @@
     <section class="panel">
         <div id="details" class="empty">Loading booking...</div>
         <div class="actions" style="margin-top:16px">
-            <button id="btnInvoice" onclick="act('/api/payments/invoice/', 'Invoice generated.')">Generate invoice</button>
-            <button id="btnRefund" class="secondary" onclick="act('/api/payments/refund/', 'Refund processed.', b => '?venueDamaged=' + !!b.venue_damaged + '&cancelled=' + (b.status === 'Cancelled'))">Process refund</button>
+            <button id="btnInvoice" onclick="act('/api/payments/invoice/', 'Invoice generated.', 'Generate the invoice for this booking?')">Generate invoice</button>
+            <button id="btnRefund" class="secondary" onclick="act('/api/payments/refund/', 'Refund processed.', 'Process the deposit refund for this booking?')">Process refund</button>
+            <a id="lnkInvoice" class="btnlink" target="_blank" hidden>View invoice</a>
         </div>
+        <div id="hint"></div>
         <div id="msg" role="status"></div>
     </section>
 
@@ -64,6 +73,7 @@
 <script>
     const $ = id => document.getElementById(id);
     const rs = n => 'Rs. ' + Number(n).toLocaleString();
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let bookings = [];
 
     function say(text, cls) { const m = $('msg'); m.textContent = text; m.className = cls || ''; }
@@ -85,7 +95,7 @@
             say('Could not load bookings: ' + e.message, 'err');
         }
         $('bookingSelect').innerHTML = bookings.length
-            ? bookings.map(b => `<option value="${b.booking_id}">#${b.booking_id} - ${b.customer_name} - ${b.event_date} - ${b.status}</option>`).join('')
+            ? bookings.map(b => `<option value="${b.booking_id}">#${b.booking_id} - ${esc(b.customer_name)} - ${b.event_date} - ${esc(b.status)}</option>`).join('')
             : '<option value="">No bookings available</option>';
         if (keep) $('bookingSelect').value = keep;
         await showBooking();
@@ -98,21 +108,60 @@
 
     function selectBooking() { say(''); showBooking(); }
 
+    function paymentState(b) {
+        if (b.status === 'Cancelled') return ['Cancelled', 'b-red'];
+        if (Number(b.balance_paid) > 0) return ['Fully Paid', 'b-green'];
+        if (Number(b.deposit_paid) > 0) return ['Deposit paid - balance pending', 'b-amber'];
+        return ['Not paid yet', 'b-grey'];
+    }
+
     async function showBooking() {
         const b = selected();
-        $('btnInvoice').disabled = $('btnRefund').disabled = !b;
         if (!b) {
+            $('btnInvoice').disabled = $('btnRefund').disabled = true;
+            $('lnkInvoice').hidden = true;
+            $('hint').textContent = '';
             $('details').className = 'empty';
             $('details').textContent = 'Select a booking to see its details.';
             $('history').innerHTML = '';
             return;
         }
+
+        const depositPaid = Number(b.deposit_paid) > 0;
+        const balancePaid = Number(b.balance_paid) > 0;
+        const hasInvoice = Number(b.has_invoice) > 0;
+        const cancelled = b.status === 'Cancelled';
+        const canInvoice = !cancelled && balancePaid && !hasInvoice;
+        const canRefund = (b.status === 'Cancelled' || b.status === 'Completed') && depositPaid;
+
+        $('btnInvoice').disabled = !canInvoice;
+        $('btnRefund').disabled = !canRefund;
+
+        const link = $('lnkInvoice');
+        link.hidden = !hasInvoice;
+        link.href = 'invoice.html?booking=' + b.booking_id;
+
+        let hint = '';
+        if (cancelled) hint = 'Cancelled booking: no invoice. You can process the deposit outcome.';
+        else if (hasInvoice) hint = 'Invoice already issued. Use "View invoice" to open or print it.';
+        else if (!balancePaid) hint = 'An invoice can only be generated after the balance is paid.';
+        else hint = 'Balance paid. You can generate the invoice now.';
+        $('hint').textContent = hint;
+
+        const [label, cls] = paymentState(b);
+        const remaining = cancelled ? '-' : (balancePaid ? rs(0) : rs(b.total_price));
+        const dueRow = (cancelled || balancePaid) ? '' : `<dt>Balance due by</dt><dd>${b.balance_due_date}</dd>`;
+
         $('details').className = '';
         $('details').innerHTML = `<dl>
-      <dt>Customer</dt><dd>${b.customer_name}</dd>
-      <dt>Event</dt><dd>${b.event_type} on ${b.event_date} (${b.guest_count} guests)</dd>
-      <dt>Status</dt><dd>${b.status}</dd>
+      <dt>Customer</dt><dd>${esc(b.customer_name)}</dd>
+      <dt>Event</dt><dd>${esc(b.event_type)} on ${b.event_date} (${b.guest_count} guests)</dd>
+      <dt>Booking status</dt><dd>${esc(b.status)}</dd>
+      <dt>Payment status</dt><dd><span class="badge ${cls}">${label}</span></dd>
       <dt>Total price</dt><dd>${rs(b.total_price)}</dd>
+      <dt>Paid so far</dt><dd>${rs(b.paid_total)}</dd>
+      <dt>Balance remaining</dt><dd>${remaining}</dd>
+      ${dueRow}
       <dt>Venue damaged</dt><dd>${b.venue_damaged ? 'Yes' : 'No'}</dd></dl>`;
         await loadHistory(b.booking_id);
     }
@@ -123,19 +172,20 @@
             const rows = await call('/api/payments/history/' + id);
             if (!Array.isArray(rows)) throw new Error('Unexpected reply');
             body.innerHTML = rows.length ? rows.map(p => `<tr>
-        <td>${p.payment_id}</td><td>${p.payment_type}</td><td>${rs(p.amount)}</td>
-        <td>${p.payment_date}</td><td>${p.payment_status}</td><td>${p.refund_status}</td></tr>`).join('')
+        <td>${p.payment_id}</td><td>${esc(p.payment_type)}</td><td>${rs(p.amount)}</td>
+        <td>${p.payment_date}</td><td>${esc(p.payment_status)}</td><td>${esc(p.refund_status)}</td></tr>`).join('')
                 : '<tr><td colspan="6" class="empty">No payments recorded for this booking.</td></tr>';
         } catch (e) {
-            body.innerHTML = `<tr><td colspan="6" class="err">Could not load history: ${e.message}</td></tr>`;
+            body.innerHTML = `<tr><td colspan="6" class="err">Could not load history: ${esc(e.message)}</td></tr>`;
         }
     }
 
-    async function act(path, okText, extra) {
+    async function act(path, okText, confirmText) {
         const b = selected();
         if (!b) return;
+        if (confirmText && !confirm(confirmText)) return;
         try {
-            const r = await call(path + b.booking_id + (extra ? extra(b) : ''), 'POST');
+            const r = await call(path + b.booking_id, 'POST');
             say(typeof r === 'string' && r ? r : okText, 'ok');
         } catch (e) {
             say(e.message, 'err');

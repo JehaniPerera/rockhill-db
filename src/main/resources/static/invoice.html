@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Invoice - Rockhill Reception Hall &amp; Caterers</title>
+    <style>
+        :root{--ink:#1b2430;--muted:#5d6877;--bg:#f2f4f7;--line:#d5dbe3;--accent:#1f5e52;--err:#a32d2d}
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
+        main{max-width:760px;margin:0 auto;padding:28px 16px 48px}
+        .sheet{background:#fff;border:1px solid var(--line);border-radius:8px;padding:28px}
+        .head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:18px}
+        h1{font-size:22px;margin:0;color:var(--accent)}
+        .muted{color:var(--muted);font-size:14px}
+        .title{font-size:20px;font-weight:700;text-align:right}
+        dl{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;margin:0 0 18px}
+        dt{color:var(--muted)} dd{margin:0;font-weight:600}
+        table{width:100%;border-collapse:collapse;margin-bottom:12px}
+        th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
+        th{color:var(--muted);font-weight:600}
+        td.num,th.num{text-align:right}
+        .totals{margin-left:auto;max-width:320px}
+        .totals div{display:flex;justify-content:space-between;padding:4px 0}
+        .totals .big{font-weight:700;font-size:17px;border-top:2px solid var(--ink);margin-top:6px;padding-top:8px}
+        .note{margin-top:18px;padding:10px 12px;background:#f2f4f7;border-radius:6px;font-size:13px;color:var(--muted)}
+        .err{color:var(--err);font-weight:600}
+        .tools{margin-bottom:14px;display:flex;gap:10px}
+        button{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}
+        @media print{
+            body{background:#fff}
+            .tools{display:none}
+            main{padding:0}
+            .sheet{border:0;padding:0}
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="tools">
+        <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+    <div class="sheet" id="sheet">Loading invoice...</div>
+</main>
+
+<script>
+    const $ = id => document.getElementById(id);
+    const rs = n => 'Rs. ' + Number(n).toLocaleString();
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    async function get(path) {
+        const res = await fetch(path);
+        const text = await res.text();
+        if (!res.ok) throw new Error(text || ('Error ' + res.status));
+        return JSON.parse(text);
+    }
+
+    async function load() {
+        const id = new URLSearchParams(location.search).get('booking');
+        if (!id) { $('sheet').innerHTML = '<p class="err">No booking selected.</p>'; return; }
+        try {
+            const [inv, rows] = await Promise.all([
+                get('/api/payments/invoice/' + encodeURIComponent(id)),
+                get('/api/payments/history/' + encodeURIComponent(id))
+            ]);
+            const paid = rows.reduce((s, p) => s + Number(p.amount), 0);
+            $('sheet').innerHTML = `
+        <div class="head">
+          <div>
+            <h1>Rockhill Reception Hall &amp; Caterers</h1>
+            <div class="muted">No 3/1, Habarakada, Homagama<br>Hotline / WhatsApp: 070 500 0090</div>
+          </div>
+          <div class="title">INVOICE<div class="muted">No. ${inv.invoice_id} &middot; ${inv.issue_date}</div></div>
+        </div>
+        <dl>
+          <dt>Customer</dt><dd>${esc(inv.customer_name)}</dd>
+          <dt>Phone</dt><dd>${esc(inv.customer_phone)}</dd>
+          <dt>Booking</dt><dd>#${inv.booking_id}</dd>
+          <dt>Event</dt><dd>${esc(inv.event_type)} on ${inv.event_date}</dd>
+          <dt>Guests</dt><dd>${inv.guest_count}</dd>
+        </dl>
+        <table>
+          <thead><tr><th>Payment</th><th>Date</th><th>Status</th><th class="num">Amount</th></tr></thead>
+          <tbody>${rows.map(p => `<tr><td>${esc(p.payment_type)}</td><td>${p.payment_date}</td>
+            <td>${esc(p.payment_status)}</td><td class="num">${rs(p.amount)}</td></tr>`).join('')}</tbody>
+        </table>
+        <div class="totals">
+          <div><span>Event total</span><span>${rs(inv.total_amount)}</span></div>
+          <div class="big"><span>Total paid</span><span>${rs(paid)}</span></div>
+        </div>
+        <div class="note">The Rs. 20,000 deposit is a separate refundable advance. It is refunded the day after the event if there is no damage to the venue.</div>`;
+        } catch (e) {
+            $('sheet').innerHTML = '<p class="err">' + esc(e.message) + '</p>';
+        }
+    }
+    load();
+</script>
+</body>
+</html>
