@@ -1,83 +1,21 @@
-package com.rockhill.reception_hall.booking.dto;
+package com.rockhill.reception_hall.booking.repository;
 
-import com.rockhill.reception_hall.booking.model.EventType;
+import com.rockhill.reception_hall.booking.model.Booking;
+import com.rockhill.reception_hall.booking.model.BookingStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 
-public class BookingRequest {
+public interface BookingRepository
+        extends JpaRepository<Booking, Integer> {
 
-    private String customerName;
-    private String phone;
-    private String email;
+    List<Booking> findByEventDate(LocalDate eventDate);
 
-    private LocalDate eventDate;
-    private EventType eventType;
-    private Integer guestCount;
+    List<Booking> findByStatusIn(List<BookingStatus> statuses);
 
-    private Integer packageId;
-    private Integer menuId;
-
-    public String getCustomerName() {
-        return customerName;
-    }
-
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public LocalDate getEventDate() {
-        return eventDate;
-    }
-
-    public void setEventDate(LocalDate eventDate) {
-        this.eventDate = eventDate;
-    }
-
-    public EventType getEventType() {
-        return eventType;
-    }
-
-    public void setEventType(EventType eventType) {
-        this.eventType = eventType;
-    }
-
-    public Integer getGuestCount() {
-        return guestCount;
-    }
-
-    public void setGuestCount(Integer guestCount) {
-        this.guestCount = guestCount;
-    }
-
-    public Integer getPackageId() {
-        return packageId;
-    }
-
-    public void setPackageId(Integer packageId) {
-        this.packageId = packageId;
-    }
-
-    public Integer getMenuId() {
-        return menuId;
-    }
-
-    public void setMenuId(Integer menuId) {
-        this.menuId = menuId;
-    }
+    boolean existsByEventDateAndStatusNot(
+            LocalDate eventDate,
+            BookingStatus status
+    );
 }
