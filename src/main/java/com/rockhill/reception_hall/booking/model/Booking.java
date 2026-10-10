@@ -3,52 +3,52 @@ package com.rockhill.reception_hall.booking.model;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Entity
-@Table(name = "booking")
+@Table(name = "Booking")
 @Inheritance(strategy = InheritanceType.JOINED)
 public abstract class Booking {
+    public static final int DEPOSIT_DAYS = 7;
+    public static final int BALANCE_DAYS_BEFORE_EVENT = 14;
+
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "booking_id")
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
-    @Column(nullable = false)
+    @Column(name = "event_date", nullable = false)
     private LocalDate eventDate;
 
-    @Enumerated(EnumType.STRING) @Column(nullable = false)
+    @Convert(converter = EventTypeConverter.class)
+    @Column(name = "event_type", nullable = false)
     private EventType eventType;
 
-    @Column(nullable = false)
+    @Column(name = "guest_count", nullable = false)
     private int guestCount;
 
-    @Enumerated(EnumType.STRING) @Column(nullable = false)
+    @Convert(converter = BookingStatusConverter.class)
+    @Column(name = "status", nullable = false)
     private BookingStatus status = BookingStatus.PENDING;
 
     /** false = customer is still filling the form (draft); true = customer pressed Submit. */
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(name = "submitted", nullable = false)
     private boolean submitted = false;
 
-    private LocalDate depositDueDate;   // confirmation date + 7 days
-    private LocalDate balanceDueDate;   // event date - 14 days
+    /** Set when the event is marked completed. Payments uses it to decide the Rs. 20,000 deposit refund. */
+    @Column(name = "venue_damaged", nullable = false)
+    private boolean venueDamaged = false;
+
+    @Column(name = "cancellation_reason")
     private String cancellationReason;
+
+    @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
+
+    @Column(name = "last_activity_at", nullable = false)
     private LocalDateTime lastActivityAt = LocalDateTime.now();
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "booking_addon_ids", joinColumns = @JoinColumn(name = "booking_id"))
-    @Column(name = "addon_id")
-    private Set<Long> addOnIds = new LinkedHashSet<>();
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "booking_decor_ids", joinColumns = @JoinColumn(name = "booking_id"))
-    @Column(name = "decor_id")
-    private Set<Long> decorIds = new LinkedHashSet<>();
 
     protected Booking() {}
     protected Booking(Customer customer, LocalDate eventDate, EventType eventType, int guestCount) {
@@ -64,7 +64,18 @@ public abstract class Booking {
         touch();
     }
 
+    /** Keeps the 24-hour draft-expiry clock alive (also called by Function 2 when selections change). */
     public void touch() { this.lastActivityAt = LocalDateTime.now(); }
+
+    /** Deposit is due 7 days after confirmation (calculated, not stored). */
+    public LocalDate getDepositDueDate() {
+        return confirmedAt == null ? null : confirmedAt.toLocalDate().plusDays(DEPOSIT_DAYS);
+    }
+
+    /** Balance is due 14 days before the event (calculated, not stored). */
+    public LocalDate getBalanceDueDate() {
+        return eventDate == null ? null : eventDate.minusDays(BALANCE_DAYS_BEFORE_EVENT);
+    }
 
     public Long getId() { return id; }
     public Customer getCustomer() { return customer; }
@@ -72,20 +83,14 @@ public abstract class Booking {
     public void setEventDate(LocalDate d) { this.eventDate = d; touch(); }
     public EventType getEventType() { return eventType; }
     public int getGuestCount() { return guestCount; }
-    public void setGuestCount(int g) { this.guestCount = g; touch(); }
     public BookingStatus getStatus() { return status; }
     public boolean isSubmitted() { return submitted; }
     public void setSubmitted(boolean s) { this.submitted = s; touch(); }
-    public LocalDate getDepositDueDate() { return depositDueDate; }
-    public void setDepositDueDate(LocalDate d) { this.depositDueDate = d; }
-    public LocalDate getBalanceDueDate() { return balanceDueDate; }
-    public void setBalanceDueDate(LocalDate d) { this.balanceDueDate = d; }
+    public boolean isVenueDamaged() { return venueDamaged; }
+    public void setVenueDamaged(boolean d) { this.venueDamaged = d; }
     public String getCancellationReason() { return cancellationReason; }
     public void setCancellationReason(String r) { this.cancellationReason = r; }
     public LocalDateTime getConfirmedAt() { return confirmedAt; }
     public void setConfirmedAt(LocalDateTime t) { this.confirmedAt = t; }
     public LocalDateTime getLastActivityAt() { return lastActivityAt; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public Set<Long> getAddOnIds() { return addOnIds; }
-    public Set<Long> getDecorIds() { return decorIds; }
 }

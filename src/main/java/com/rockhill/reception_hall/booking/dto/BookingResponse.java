@@ -1,20 +1,20 @@
-package com.rockhill.reception_hall.booking.repository;
+package com.rockhill.reception_hall.booking.dto;
 
-import com.rockhill.reception_hall.booking.model.Booking;
-import com.rockhill.reception_hall.booking.model.BookingStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.rockhill.reception_hall.booking.model.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
 
-public interface BookingRepository extends JpaRepository<Booking, Long> {
-    boolean existsByEventDateAndStatusIn(LocalDate date, Collection<BookingStatus> statuses);
-    boolean existsByEventDateAndStatusInAndIdNot(LocalDate date, Collection<BookingStatus> statuses, Long id);
-
-    List<Booking> findByStatus(BookingStatus status);
-    List<Booking> findByStatusAndSubmittedTrue(BookingStatus status);
-    List<Booking> findByCustomerId(Long customerId);
-    List<Booking> findByStatusAndSubmittedFalseAndLastActivityAtBefore(BookingStatus status, LocalDateTime cutoff);
-    List<Booking> findByStatusAndDepositDueDateBefore(BookingStatus status, LocalDate date);
+public record BookingResponse(Long id, String customerName, LocalDate eventDate, EventType eventType,
+                              int guestCount, BookingStatus status, boolean submitted, boolean venueDamaged,
+                              LocalDate depositDueDate, LocalDate balanceDueDate, String cancellationReason,
+                              Long packageId, Long menuId) {
+    public static BookingResponse from(Booking b) {
+        boolean confirmed = b.getStatus() == BookingStatus.CONFIRMED;
+        Long pkg = b instanceof WeddingBooking w ? w.getPackageId() : null;
+        Long menu = b instanceof OtherEventBooking o ? o.getMenuId() : null;
+        return new BookingResponse(b.getId(), b.getCustomer().getName(), b.getEventDate(), b.getEventType(),
+                b.getGuestCount(), b.getStatus(), b.isSubmitted(), b.isVenueDamaged(),
+                confirmed ? b.getDepositDueDate() : null,
+                confirmed ? b.getBalanceDueDate() : null,
+                b.getCancellationReason(), pkg, menu);
+    }
 }

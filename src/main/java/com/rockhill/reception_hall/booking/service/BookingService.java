@@ -9,6 +9,7 @@ import com.rockhill.reception_hall.booking.repository.CustomerRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,20 +23,21 @@ import java.util.List;
 @Service
 @Transactional
 public class BookingService {
-    private static final EnumSet<BookingStatus> DATE_BLOCKING = EnumSet.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
-    public static final int DEPOSIT_DAYS = 7;
-    public static final int BALANCE_DAYS_BEFORE_EVENT = 14;
+    // Same rule as the database: every status except Cancelled holds the date.
+    private static final EnumSet<BookingStatus> DATE_BLOCKING =
+            EnumSet.of(BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.COMPLETED);
     public static final int DRAFT_EXPIRY_HOURS = 24;
 
     private final BookingRepository bookings;
     private final CustomerRepository customers;
     private final BookingFactory factory;
     private final ApplicationEventPublisher publisher;
+    private final JdbcTemplate jdbc;
 
-    public BookingService(BookingRepository bookings, CustomerRepository customers,
-                          BookingFactory factory, ApplicationEventPublisher publisher) {
+    public BookingService(BookingRepository bookings, CustomerRepository customers, BookingFactory factory,
+                          ApplicationEventPublisher publisher, JdbcTemplate jdbc) {
         this.bookings = bookings; this.customers = customers;
-        this.factory = factory; this.publisher = publisher;
+        this.factory = factory; this.publisher = publisher; this.jdbc = jdbc;
     }
 
     // ---- Scenario 1: Check venue availability ----
@@ -49,14 +51,25 @@ public class BookingService {
         validateGuestCount(r.eventType(), r.guestCount());
         if (!isDateAvailable(r.eventDate()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Date is not available");
-        Customer c = customers.findByPhone(r.customerPhone())
-                .orElseGet(() -> customers.save(new Customer(r.customerName(), r.customerPhone(), r.customerEmail())));
-        Booking b = factory.create(c, r.eventDate(), r.eventType(), r.guestCount());
+        Customer c = findOrCreateCustomer(r);
+        Booking b = factory.create(c, r.eventDate(), r.eventType(), r.guestCount(), r.selectionId());
         try {
-            return bookings.saveAndFlush(b);   // DB unique constraint is the final guard against double-booking
+            return bookings.saveAndFlush(b);   // DB unique constraint on active_event_date is the final guard
         } catch (DataIntegrityViolationException ex) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Date is not available");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Could not save the booking: the date was just taken, or the selected package/menu does not exist");
         }
+    }
+
+    private Customer findOrCreateCustomer(BookingRequest r) {
+        String phone = r.customerPhone().trim();
+        String email = (r.customerEmail() == null || r.customerEmail().isBlank()) ? null : r.customerEmail().trim();
+        return customers.findByPhone(phone).stream().findFirst().orElseGet(() -> {
+            if (email != null && customers.findFirstByEmail(email).isPresent())
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "This email is already registered with a different phone number");
+            return customers.save(new Customer(r.customerName().trim(), phone, email));
+        });
     }
 
     private void validateGuestCount(EventType type, int guests) {
@@ -66,12 +79,14 @@ public class BookingService {
                     "Wedding guest count must be between 100 and 300");
     }
 
-    // ---- selections attach to the Pending booking ----
+    // ---- package / menu (add-ons and decor belong to Function 2's BookingSelectionService) ----
     public Booking attachPackage(Long id, Long packageId) {
         Booking b = editableBooking(id);
         if (!(b instanceof WeddingBooking w))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Packages are for wedding bookings only");
         w.setPackageId(packageId);
+        b.touch();
+        flushOrBadRequest("The selected package does not exist");
         return b;
     }
 
@@ -80,19 +95,14 @@ public class BookingService {
         if (!(b instanceof OtherEventBooking o))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menus are for non-wedding events only");
         o.setMenuId(menuId);
+        b.touch();
+        flushOrBadRequest("The selected menu does not exist");
         return b;
     }
 
-    public Booking setAddOns(Long id, List<Long> addOnIds) {
-        Booking b = editableBooking(id);
-        b.getAddOnIds().clear(); b.getAddOnIds().addAll(addOnIds); b.touch();
-        return b;
-    }
-
-    public Booking setDecor(Long id, List<Long> decorIds) {
-        Booking b = editableBooking(id);
-        b.getDecorIds().clear(); b.getDecorIds().addAll(decorIds); b.touch();
-        return b;
+    private void flushOrBadRequest(String message) {
+        try { bookings.flush(); }
+        catch (DataIntegrityViolationException ex) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
     }
 
     private Booking editableBooking(Long id) {
@@ -105,10 +115,6 @@ public class BookingService {
     // ---- customer presses the final Submit ----
     public Booking submit(Long id) {
         Booking b = editableBooking(id);
-        if (b instanceof WeddingBooking w && w.getPackageId() == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please select a wedding package first");
-        if (b instanceof OtherEventBooking o && o.getMenuId() == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please select a catering menu first");
         b.setSubmitted(true);
         publisher.publishEvent(new BookingEvent(b, Type.SUBMITTED));   // notifies the admin
         return b;
@@ -120,9 +126,7 @@ public class BookingService {
         requireSubmitted(b);
         guard(b, BookingStatus.CONFIRMED);
         b.changeStatus(BookingStatus.CONFIRMED);
-        b.setConfirmedAt(LocalDateTime.now());
-        b.setDepositDueDate(LocalDate.now().plusDays(DEPOSIT_DAYS));
-        b.setBalanceDueDate(b.getEventDate().minusDays(BALANCE_DAYS_BEFORE_EVENT));
+        b.setConfirmedAt(LocalDateTime.now());   // deposit due date = this + 7 days
         publisher.publishEvent(new BookingEvent(b, Type.CONFIRMED));
         return b;
     }
@@ -154,14 +158,11 @@ public class BookingService {
         if (bookings.existsByEventDateAndStatusInAndIdNot(newDate, DATE_BLOCKING, id))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "New date is not available");
         boolean wasConfirmed = b.getStatus() == BookingStatus.CONFIRMED;
-        b.setEventDate(newDate);
-        if (wasConfirmed) {
-            b.setBalanceDueDate(newDate.minusDays(BALANCE_DAYS_BEFORE_EVENT));
-            if (byCustomer) {   // customer change on a Confirmed booking needs admin approval again
-                b.changeStatus(BookingStatus.PENDING);
-                publisher.publishEvent(new BookingEvent(b, Type.RESCHEDULE_REQUESTED));
-                return b;
-            }
+        b.setEventDate(newDate);   // the balance due date is calculated from the event date
+        if (wasConfirmed && byCustomer) {   // customer change on a Confirmed booking needs admin approval again
+            b.changeStatus(BookingStatus.PENDING);
+            publisher.publishEvent(new BookingEvent(b, Type.RESCHEDULE_REQUESTED));
+            return b;
         }
         publisher.publishEvent(new BookingEvent(b, Type.RESCHEDULED));
         return b;
@@ -173,16 +174,18 @@ public class BookingService {
         guard(b, BookingStatus.CANCELLED);
         b.changeStatus(BookingStatus.CANCELLED);
         b.setCancellationReason(reason == null || reason.isBlank() ? "Cancelled by request" : reason);
+        releaseStaff(b);   // step 5: free assigned staff/vendors
         publisher.publishEvent(new BookingEvent(b, Type.CANCELLED));
         return b;
     }
 
-    // ---- Scenario 7: Mark completed ----
-    public Booking markCompleted(Long id) {
+    // ---- Scenario 7: Mark completed (records the venue damage status) ----
+    public Booking markCompleted(Long id, boolean venueDamaged) {
         Booking b = get(id);
         guard(b, BookingStatus.COMPLETED);
         if (b.getEventDate().isAfter(LocalDate.now()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Event has not taken place yet");
+        b.setVenueDamaged(venueDamaged);   // Payments uses this flag for the Rs. 20,000 deposit refund
         b.changeStatus(BookingStatus.COMPLETED);
         publisher.publishEvent(new BookingEvent(b, Type.COMPLETED));
         return b;
@@ -206,7 +209,8 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<Booking> byPhone(String phone) {
-        return customers.findByPhone(phone).map(c -> bookings.findByCustomerId(c.getId())).orElse(List.of());
+        return customers.findByPhone(phone).stream()
+                .flatMap(c -> bookings.findByCustomerId(c.getId()).stream()).toList();
     }
 
     private void guard(Booking b, BookingStatus target) {
@@ -215,25 +219,37 @@ public class BookingService {
                     "Cannot change booking from " + b.getStatus() + " to " + target);
     }
 
+    /** Removes the booking's rows in Function 3's StaffAssignment table. */
+    private void releaseStaff(Booking b) {
+        jdbc.update("DELETE FROM StaffAssignment WHERE booking_id = ?", b.getId());
+    }
+
     // ---- Scheduled clean-up: releases dates held by abandoned drafts and unpaid bookings ----
     @Scheduled(fixedRate = 3_600_000)
     public void expireStaleBookings() {
-        LocalDateTime cutoff = LocalDateTime.now().minusHours(DRAFT_EXPIRY_HOURS);
-        for (Booking b : bookings.findByStatusAndSubmittedFalseAndLastActivityAtBefore(BookingStatus.PENDING, cutoff)) {
+        LocalDateTime draftCutoff = LocalDateTime.now().minusHours(DRAFT_EXPIRY_HOURS);
+        for (Booking b : bookings.findByStatusAndSubmittedFalseAndLastActivityAtBefore(BookingStatus.PENDING, draftCutoff)) {
             b.changeStatus(BookingStatus.CANCELLED);
             b.setCancellationReason("Expired: draft not submitted within " + DRAFT_EXPIRY_HOURS + " hours");
             publisher.publishEvent(new BookingEvent(b, Type.CANCELLED));
         }
-        // Deposit not received within 7 days of confirmation (scenario 4, alternate 6a).
-        for (Booking b : bookings.findByStatusAndDepositDueDateBefore(BookingStatus.CONFIRMED, LocalDate.now())) {
+        // Scenario 4, alternate 6a: deposit not received within 7 days of confirmation.
+        LocalDateTime depositCutoff = LocalDateTime.now().minusDays(Booking.DEPOSIT_DAYS);
+        for (Booking b : bookings.findByStatusAndConfirmedAtBefore(BookingStatus.CONFIRMED, depositCutoff)) {
             if (!isDepositPaid(b)) {
                 b.changeStatus(BookingStatus.CANCELLED);
-                b.setCancellationReason("Deposit not received within " + DEPOSIT_DAYS + " days");
+                b.setCancellationReason("Deposit not received within " + Booking.DEPOSIT_DAYS + " days");
+                releaseStaff(b);
                 publisher.publishEvent(new BookingEvent(b, Type.DEPOSIT_OVERDUE));
             }
         }
     }
 
-    /** TODO: replace with the payment team's lookup. Always false for now, so test this job carefully. */
-    protected boolean isDepositPaid(Booking b) { return false; }
+    /** Reads the Payment table (Function 4): is there a Deposit row for this booking? */
+    protected boolean isDepositPaid(Booking b) {
+        Integer n = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND payment_type = 'Deposit'",
+                Integer.class, b.getId());
+        return n != null && n > 0;
+    }
 }

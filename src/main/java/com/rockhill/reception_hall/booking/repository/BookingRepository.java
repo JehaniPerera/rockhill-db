@@ -13,7 +13,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     boolean existsByEventDateAndStatusInAndIdNot(LocalDate date, Collection<BookingStatus> statuses, Long id);
 
     List<Booking> findByStatus(BookingStatus status);
+    List<Booking> findByStatusAndSubmittedTrue(BookingStatus status);
     List<Booking> findByCustomerId(Long customerId);
-    List<Booking> findByStatusAndLastActivityAtBefore(BookingStatus status, LocalDateTime cutoff);
-    List<Booking> findByStatusAndDepositDueDateBefore(BookingStatus status, LocalDate date);
+    List<Booking> findByStatusAndSubmittedFalseAndLastActivityAtBefore(BookingStatus status, LocalDateTime cutoff);
+    List<Booking> findByStatusAndConfirmedAtBefore(BookingStatus status, LocalDateTime cutoff);
 }

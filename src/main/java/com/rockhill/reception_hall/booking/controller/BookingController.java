@@ -25,7 +25,9 @@ public class BookingController {
 
     @PostMapping("/wedding") @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse createWedding(@Valid @RequestBody BookingRequest r) {
-        return BookingResponse.from(service.createPending(withType(r, EventType.WEDDING)));
+        if (r.eventType() != EventType.WEDDING)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This endpoint is for wedding bookings");
+        return BookingResponse.from(service.createPending(r));
     }
 
     @PostMapping("/event") @ResponseStatus(HttpStatus.CREATED)
@@ -59,14 +61,6 @@ public class BookingController {
     public BookingResponse menu(@PathVariable Long id, @PathVariable Long menuId) {
         return BookingResponse.from(service.attachMenu(id, menuId));
     }
-    @PutMapping("/{id}/addons")
-    public BookingResponse addOns(@PathVariable Long id, @RequestBody List<Long> ids) {
-        return BookingResponse.from(service.setAddOns(id, ids));
-    }
-    @PutMapping("/{id}/decor")
-    public BookingResponse decor(@PathVariable Long id, @RequestBody List<Long> ids) {
-        return BookingResponse.from(service.setDecor(id, ids));
-    }
 
     @PostMapping("/{id}/submit")
     public BookingResponse submit(@PathVariable Long id) { return BookingResponse.from(service.submit(id)); }
@@ -91,10 +85,8 @@ public class BookingController {
     }
 
     @PostMapping("/{id}/complete")
-    public BookingResponse complete(@PathVariable Long id) { return BookingResponse.from(service.markCompleted(id)); }
-
-    private BookingRequest withType(BookingRequest r, EventType t) {
-        return new BookingRequest(r.customerName(), r.customerPhone(), r.customerEmail(),
-                r.eventDate(), t, r.guestCount());
+    public BookingResponse complete(@PathVariable Long id,
+                                    @RequestParam(defaultValue = "false") boolean venueDamaged) {
+        return BookingResponse.from(service.markCompleted(id, venueDamaged));
     }
 }

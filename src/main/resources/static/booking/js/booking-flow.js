@@ -2,14 +2,27 @@ function initBooking(cfg) {
     const $ = id => document.getElementById(id);
     let bookingId = null;
 
+    // Function 2's JSON uses addonId / decorId / packageId / menuId as the id field.
+    const idOf = i => [i.addonId, i.decorId, i.packageId, i.menuId, i.id].find(v => v !== undefined && v !== null);
+    const money = n => 'Rs. ' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function label(i) {
+        const t = i.category ? i.category + ' - ' + i.name : i.name;
+        if (i.pricePerGuest != null) return t + ' - ' + money(i.pricePerGuest) + ' per guest';
+        if (i.price != null) {
+            const free = cfg.wedding && (i.category !== undefined || i.includedInPackage);
+            return t + (free ? ' - included in package'
+                : ' - ' + money(i.price) + (i.unitType ? ' (' + i.unitType + ')' : ''));
+        }
+        return t;
+    }
+
     $('eventDate').min = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     $('eventDate').onchange = () => { if (!bookingId) $('step2').classList.add('hidden'); };
 
     async function loadOptions(url) {
         try { const r = await api(url); return Array.isArray(r) ? r : null; } catch (e) { return null; }
     }
-    const label = i => (i.name || ('#' + i.id))
-        + (i.priceNote ? ' - ' + i.priceNote : (i.price != null ? ' - Rs. ' + i.price : ''));
 
     // ---------- package / menu list (needed in step 2) ----------
     async function fillSelection() {
@@ -19,10 +32,10 @@ function initBooking(cfg) {
             sel.innerHTML = '<option value="">-- choose --</option>';
             items.forEach(i => {
                 const o = document.createElement('option');
-                o.value = i.id; o.textContent = label(i);
+                o.value = idOf(i); o.textContent = label(i);
                 sel.appendChild(o);
             });
-        } else {  // list not available -> let the user type the ID
+        } else {
             const inp = document.createElement('input');
             inp.type = 'number'; inp.id = 'selection';
             inp.placeholder = 'Enter ' + cfg.selectionLabel + ' ID';
@@ -75,32 +88,34 @@ function initBooking(cfg) {
                 .forEach(id => $(id).disabled = true);
             showMsg(msg, 'Booking request #' + bookingId + ' started. You can now add extras below.', 'success');
             $('step3').classList.remove('hidden');
-            fillChecks('addons', cfg.addonsUrl, cfg.hideIncludedAddons);
+            fillChecks('addons', cfg.addonsUrl, true);
             fillChecks('decor', cfg.decorUrl, false);
         } catch (e) { showMsg(msg, e.message, 'error'); }
     };
 
-    // ---------- Step 3: add-ons and decor with quantities ----------
-    async function fillChecks(containerId, url, hideIncluded) {
+    // ---------- Step 3: add-ons and decor (Function 2 endpoints) ----------
+    async function fillChecks(containerId, url, withQty) {
         const box = $(containerId);
-        let items = await loadOptions(url);
+        const items = await loadOptions(url);
         box.innerHTML = '';
-        if (items && hideIncluded) items = items.filter(i => !i.includedInPackage);
         if (items && items.length) {
             items.forEach(i => {
                 const l = document.createElement('label');
                 const c = document.createElement('input');
-                c.type = 'checkbox'; c.value = i.id;
+                c.type = 'checkbox'; c.value = idOf(i);
                 const t = document.createElement('span'); t.textContent = label(i);
-                const q = document.createElement('input');
-                q.type = 'number'; q.min = 1; q.value = 1; q.title = 'Quantity';
-                l.append(c, t, q);
+                l.append(c, t);
+                if (withQty) {
+                    const q = document.createElement('input');
+                    q.type = 'number'; q.min = 1; q.placeholder = 'auto'; q.title = 'Quantity (leave empty for automatic)';
+                    l.appendChild(q);
+                }
                 box.appendChild(l);
             });
-        } else if (!items) {  // list not available -> type IDs
+        } else if (!items) {
             const inp = document.createElement('input');
             inp.type = 'text'; inp.className = 'ids-input';
-            inp.placeholder = 'Optional: IDs separated by commas (quantity 1 each)';
+            inp.placeholder = 'Optional: IDs separated by commas';
             box.appendChild(inp);
         } else {
             box.textContent = 'Nothing to choose here.';
@@ -112,36 +127,64 @@ function initBooking(cfg) {
         const txt = box.querySelector('.ids-input');
         if (txt) {
             return txt.value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
-                .map(id => ({ id: id, quantity: 1 }));
+                .map(id => ({ id: id, quantity: null }));
         }
         return [...box.querySelectorAll('label')]
             .filter(l => l.querySelector('input[type=checkbox]').checked)
-            .map(l => ({
-                id: parseInt(l.querySelector('input[type=checkbox]').value, 10),
-                quantity: Math.max(1, parseInt(l.querySelector('input[type=number]').value, 10) || 1)
-            }));
+            .map(l => {
+                const q = l.querySelector('input[type=number]');
+                return { id: parseInt(l.querySelector('input[type=checkbox]').value, 10),
+                    quantity: q && q.value ? parseInt(q.value, 10) : null };
+            });
+    }
+
+    // Makes the server's selections equal to what is ticked: remove the unticked, add/update the ticked.
+    async function syncSelections(kind, wanted) {
+        const base = '/api/bookings/' + bookingId + '/selections/' + kind;
+        const existing = await api(base);
+        const wantedIds = new Set(wanted.map(w => w.id));
+        for (const e of existing) {
+            if (!wantedIds.has(e.itemId)) await api(base + '/' + e.itemId, { method: 'DELETE' });
+        }
+        for (const w of wanted) {
+            const q = (kind === 'addons' && w.quantity) ? '?quantity=' + w.quantity : '';
+            await api(base + '/' + w.id + q, { method: 'POST' });
+        }
     }
 
     $('saveBtn').onclick = async () => {
         const msg = $('msg3'); clearMsg(msg);
         try {
-            await api('/api/bookings/' + bookingId + '/addons', { method: 'PUT', body: JSON.stringify(checkedItems('addons')) });
-            await api('/api/bookings/' + bookingId + '/decor', { method: 'PUT', body: JSON.stringify(checkedItems('decor')) });
+            await syncSelections('addons', checkedItems('addons'));
+            await syncSelections('decor', checkedItems('decor'));
             showMsg(msg, 'Extras saved.', 'success');
             await showSummary();
         } catch (e) { showMsg(msg, e.message, 'error'); }
     };
 
-    // ---------- Step 4: summary + submit ----------
+    // ---------- Step 4: summary with price estimate + submit ----------
     async function showSummary() {
+        const base = '/api/bookings/' + bookingId + '/selections';
         const b = await api('/api/bookings/' + bookingId);
-        const fmt = list => list.length ? list.map(x => '#' + x.id + ' x ' + x.quantity).join(', ') : 'none';
+        const addons = await api(base + '/addons');
+        const decor = await api(base + '/decor');
+        const fmt = list => list.length
+            ? list.map(x => x.name + ' x ' + x.quantity + ' = ' + money(x.lineTotal)).join('; ') : 'none';
         const rows = [
             ['Reference', '#' + b.id], ['Customer', b.customerName], ['Event type', b.eventType],
             ['Date', b.eventDate], ['Guests', b.guestCount],
             [cfg.selectionLabel + ' ID', b.packageId || b.menuId],
-            ['Add-ons', fmt(b.addOns)], ['Decor', fmt(b.decor)]
+            ['Add-ons', fmt(addons)], ['Decor', fmt(decor)]
         ];
+        try {
+            const e = await api(base + '/estimate');
+            rows.push(['Base price', money(e.basePrice)]);
+            if (e.lowGuestSurcharge > 0) rows.push(['Low-guest charge', money(e.lowGuestSurcharge)]);
+            rows.push(['Add-ons total', money(e.addOnTotal)], ['Decor total', money(e.decorTotal)],
+                ['Estimated total', money(e.total)]);
+        } catch (err) {
+            rows.push(['Estimated total', 'Not available: ' + err.message]);
+        }
         const t = $('summary'); t.innerHTML = '';
         rows.forEach(([k, v]) => {
             const tr = document.createElement('tr');
