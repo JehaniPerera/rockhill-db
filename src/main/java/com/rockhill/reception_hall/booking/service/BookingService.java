@@ -148,12 +148,21 @@ public class BookingService {
     }
 
     // ---- Scenario 4: Admin confirm or reject ----
+    /**
+     * Admin ACCEPTS the request: availability is approved but the booking stays PENDING.
+     * It becomes CONFIRMED only when the Rs. 20,000 deposit is received (within 3 days).
+     */
     public Booking confirm(Long id) {
         Booking b = get(id);
         requireSubmitted(b);
-        guard(b, BookingStatus.CONFIRMED);
-        b.changeStatus(BookingStatus.CONFIRMED);
-        b.setConfirmedAt(LocalDateTime.now());   // deposit due date = this + 3 days
+        if (b.getStatus() != BookingStatus.PENDING)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a Pending booking can be accepted");
+        if (b.getConfirmedAt() != null)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Already accepted - waiting for the deposit");
+        b.setConfirmedAt(LocalDateTime.now());   // approval time: deposit due date = this + 3 days
+        b.touch();
+        if (b.isDepositReceived())               // re-approval after a customer reschedule: deposit already paid
+            b.changeStatus(BookingStatus.CONFIRMED);
         publisher.publishEvent(new BookingEvent(b, Type.CONFIRMED));
         return b;
     }
@@ -183,21 +192,24 @@ public class BookingService {
 
     private Booking receiveDeposit(Long id, String by) {
         Booking b = get(id);
-        if (b.getStatus() != BookingStatus.CONFIRMED)
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a Confirmed booking can receive a deposit");
+        if (b.getStatus() != BookingStatus.PENDING || b.getConfirmedAt() == null)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "The deposit can only be received for a Pending booking that the admin has accepted");
         if (b.isDepositReceived())
             throw new ResponseStatusException(HttpStatus.CONFLICT, "The deposit was already confirmed");
         b.markDepositReceived(by);
+        b.changeStatus(BookingStatus.CONFIRMED);   // deposit received = booking Confirmed
         publisher.publishEvent(new BookingEvent(b, Type.DEPOSIT_RECEIVED));
         return b;
     }
 
-    /** Automatic check: marks every Confirmed booking that already has a Deposit row in Payments. */
+    /** Automatic check: confirms every accepted Pending booking that already has a Deposit row in Payments. */
     public int autoConfirmDeposits() {
         int count = 0;
-        for (Booking b : bookings.findByStatus(BookingStatus.CONFIRMED)) {
-            if (!b.isDepositReceived() && Boolean.TRUE.equals(depositPaymentExists(b))) {
+        for (Booking b : bookings.findByStatusAndSubmittedTrue(BookingStatus.PENDING)) {
+            if (b.getConfirmedAt() != null && !b.isDepositReceived() && Boolean.TRUE.equals(depositPaymentExists(b))) {
                 b.markDepositReceived("AUTO");
+                b.changeStatus(BookingStatus.CONFIRMED);
                 publisher.publishEvent(new BookingEvent(b, Type.DEPOSIT_RECEIVED));
                 count++;
             }
@@ -223,8 +235,10 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "New date is not available");
         boolean wasConfirmed = b.getStatus() == BookingStatus.CONFIRMED;
         b.setEventDate(newDate);   // the balance due date is calculated from the event date
-        if (wasConfirmed && byCustomer) {   // customer change on a Confirmed booking needs admin approval again
-            b.changeStatus(BookingStatus.PENDING);
+        if (byCustomer && (wasConfirmed || b.getConfirmedAt() != null)) {
+            // A customer date change needs the admin to accept the new date again.
+            if (wasConfirmed) b.changeStatus(BookingStatus.PENDING);   // deposit stays recorded as received
+            b.setConfirmedAt(null);                                    // back to "waiting for admin"
             publisher.publishEvent(new BookingEvent(b, Type.RESCHEDULE_REQUESTED));
             return b;
         }
@@ -305,9 +319,10 @@ public class BookingService {
             publisher.publishEvent(new BookingEvent(b, Type.CANCELLED));
         }
         autoConfirmDeposits();   // automatic deposit confirmation from the Payment table
-        // Scenario 4, alternate 6a: deposit not received within 3 days of confirmation.
+        // Scenario 4, alternate 6a: deposit not received within 3 days of the admin accepting.
+        // The booking is still PENDING (accepted, awaiting deposit); drafts have no approval time.
         LocalDateTime depositCutoff = LocalDateTime.now().minusDays(Booking.DEPOSIT_DAYS);
-        for (Booking b : bookings.findByStatusAndConfirmedAtBefore(BookingStatus.CONFIRMED, depositCutoff)) {
+        for (Booking b : bookings.findByStatusAndConfirmedAtBefore(BookingStatus.PENDING, depositCutoff)) {
             if (b.isDepositReceived()) continue;
             Boolean paid = depositPaymentExists(b);
             if (paid == null || paid) continue;   // cannot check the Payment table, or it is paid

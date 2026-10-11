@@ -7,9 +7,11 @@ public record BookingResponse(Long id, String customerName, LocalDate eventDate,
                               int guestCount, BookingStatus status, boolean submitted, boolean venueDamaged,
                               LocalDate depositDueDate, LocalDate balanceDueDate, String cancellationReason,
                               Long packageId, Long menuId, String eventDescription, String venueDamageNotes,
-                              boolean depositReceived, String depositConfirmedBy) {
+                              boolean depositReceived, String depositConfirmedBy, boolean approved) {
     public static BookingResponse from(Booking b) {
-        boolean confirmed = b.getStatus() == BookingStatus.CONFIRMED;
+        // due dates are shown once the admin has accepted (Pending awaiting deposit) or the booking is Confirmed
+        boolean confirmed = b.getConfirmedAt() != null
+                && (b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.CONFIRMED);
         Long pkg = b instanceof WeddingBooking w ? w.getPackageId() : null;
         Long menu = b instanceof OtherEventBooking o ? o.getMenuId() : null;
         String desc = b instanceof OtherEventBooking o2 ? o2.getEventDescription() : null;
@@ -18,6 +20,6 @@ public record BookingResponse(Long id, String customerName, LocalDate eventDate,
                 confirmed ? b.getDepositDueDate() : null,
                 confirmed ? b.getBalanceDueDate() : null,
                 b.getCancellationReason(), pkg, menu, desc, b.getVenueDamageNotes(),
-                b.isDepositReceived(), b.getDepositConfirmedBy());
+                b.isDepositReceived(), b.getDepositConfirmedBy(), b.getConfirmedAt() != null);
     }
 }
