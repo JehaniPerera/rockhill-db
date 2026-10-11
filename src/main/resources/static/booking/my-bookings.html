@@ -51,10 +51,13 @@
                 tr.appendChild(cell(b.eventType === 'WEDDING' ? 'Wedding' : (b.eventDescription || 'Other event')));
                 tr.appendChild(cell(b.guestCount));
                 tr.appendChild(statusCell(b.status + (b.status === 'PENDING' && !b.submitted ? ' (draft)' : '')));
-                tr.appendChild(cell(b.status === 'CONFIRMED' ? (b.depositReceived ? 'Received' : 'Pay by ' + b.depositDueDate) : ''));
-                tr.appendChild(cell(b.status === 'CONFIRMED' ? b.balanceDueDate : ''));
+                let dep = '';
+                if (b.status === 'PENDING') dep = b.approved ? 'Accepted - pay by ' + b.depositDueDate : (b.submitted ? 'Waiting for hall approval' : '');
+                if (b.status === 'CONFIRMED') dep = 'Received';
+                tr.appendChild(cell(dep));
+                tr.appendChild(cell(b.status === 'CONFIRMED' || (b.status === 'PENDING' && b.approved) ? b.balanceDueDate : ''));
                 const td = document.createElement('td');
-                if (b.status === 'CONFIRMED' || (b.status === 'PENDING' && b.submitted)) {
+                if (b.status === 'CONFIRMED' || (b.status === 'PENDING' && b.submitted)) {   // Pending includes accepted-awaiting-deposit
                     td.appendChild(actionButton('Reschedule', () => reschedule(b.id)));
                 }
                 if (b.status === 'PENDING' || b.status === 'CONFIRMED') {
@@ -71,7 +74,7 @@
             if (!d) return;
             await api('/api/bookings/' + id + '/reschedule?newDate=' + encodeURIComponent(d) + '&byCustomer=true', { method: 'POST' });
             await load();
-            showMsg('msg', 'Reschedule request sent. A confirmed booking goes back to Pending until the hall approves the new date.', 'success');
+            showMsg('msg', 'Reschedule request sent. The booking is Pending until the hall approves the new date.', 'success');
         } catch (e) { showMsg('msg', e.message); }
     }
     async function cancel(id) {
