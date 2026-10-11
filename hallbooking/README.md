@@ -38,3 +38,8 @@ Marking staff 1 unavailable on 2026-10-24 gives 409 (confirmed assignment on boo
 - Cancel Booking (Function 1) should call `StaffAssignmentService.releaseForBooking(bookingId)`
   (the SQL already deletes assignments if a booking row is deleted).
 - Keep ONE pom.xml / application.properties / main class for the whole group.
+
+## 5. Front end
+Plain HTML/CSS/JS in `src/main/resources/static/` (served by Spring Boot, no npm needed, so no CORS setup either).
+Run the app, then open **http://localhost:8080**. Tabs: Staff/Vendors (CRUD), Availability, Assign to Booking.
+Added `GET /api/bookings` (BookingController) so the Assign tab can show a booking dropdown.

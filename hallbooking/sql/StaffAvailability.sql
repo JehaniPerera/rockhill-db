@@ -1,5 +1,4 @@
--- Run in MySQL Workbench AFTER OOAD_Rockhill_Database.sql
--- (and add the same lines to the group's SQL file, because the class diagram has StaffAvailability).
+
 USE rockhill;
 
 CREATE TABLE StaffAvailability (
