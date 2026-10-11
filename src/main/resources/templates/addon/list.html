@@ -19,7 +19,8 @@
             <td th:text="${a.includedInPackage} ? 'Yes' : 'No'"></td>
             <td th:text="${a.isWeddingExclusive} ? 'Yes' : 'No'"></td>
             <td>
-                <form th:action="@{/admin/addons/{id}/delete(id=${a.addonId})}" method="post">
+                <a class="btn" th:href="@{/admin/addons/{id}/edit(id=${a.addonId})}">Edit</a>
+                <form th:action="@{/admin/addons/{id}/delete(id=${a.addonId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
                 </form>
             </td>
