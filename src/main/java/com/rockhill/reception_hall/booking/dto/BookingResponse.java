@@ -3,6 +3,7 @@ package com.rockhill.reception_hall.booking.dto;
 import com.rockhill.reception_hall.booking.model.*;
 import java.time.LocalDate;
 
+
 public record BookingResponse(Long id, String customerName, LocalDate eventDate, EventType eventType,
                               int guestCount, BookingStatus status, boolean submitted, boolean venueDamaged,
                               LocalDate depositDueDate, LocalDate balanceDueDate, String cancellationReason,
