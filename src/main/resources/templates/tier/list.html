@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Manage Pricing Tiers')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <p><a th:href="@{/admin/packages}">← Back to packages</a></p>
+    <h1 th:text="${pkg.name} + ' - Pricing Tiers'"></h1>
+
+    <table>
+        <tr><th>Tier</th><th>Min guests</th><th>Max guests</th><th>Price</th><th>Action</th></tr>
+        <tr th:each="t : ${tiers}">
+            <td th:text="${t.tierNumber}"></td>
+            <td th:text="${t.minGuests}"></td>
+            <td th:text="${t.maxGuests}"></td>
+            <td th:text="${t.totalPrice}"></td>
+            <td>
+                <form th:action="@{/admin/packages/{pid}/tiers/{tid}/delete(pid=${pkg.packageId},tid=${t.tierId})}" method="post">
+                    <button type="submit" class="btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Add a tier</h2>
+    <form class="form-row" th:action="@{/admin/packages/{pid}/tiers(pid=${pkg.packageId})}" th:object="${newTier}" method="post">
+        <input type="number" th:field="*{tierNumber}" placeholder="Tier no." required>
+        <input type="number" th:field="*{minGuests}" placeholder="Min guests" required>
+        <input type="number" th:field="*{maxGuests}" placeholder="Max guests" required>
+        <input type="number" step="0.01" th:field="*{totalPrice}" placeholder="Price" required>
+        <button type="submit">Add Tier</button>
+    </form>
+</main>
+</body>
+</html>
