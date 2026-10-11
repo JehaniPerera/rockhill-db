@@ -18,7 +18,8 @@
             <td th:text="${d.price}"></td>
             <td th:text="${d.isSingular} ? 'Yes' : 'No'"></td>
             <td>
-                <form th:action="@{/admin/decor/{id}/delete(id=${d.decorId})}" method="post">
+                <a class="btn" th:href="@{/admin/decor/{id}/edit(id=${d.decorId})}">Edit</a>
+                <form th:action="@{/admin/decor/{id}/delete(id=${d.decorId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
                 </form>
             </td>
