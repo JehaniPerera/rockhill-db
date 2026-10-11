@@ -41,11 +41,8 @@ public class BookingService {
 
     public BookingService(BookingRepository bookings, CustomerRepository customers, BookingFactory factory,
                           ApplicationEventPublisher publisher, JdbcTemplate jdbc) {
-        this.bookings = bookings;
-        this.customers = customers;
-        this.factory = factory;
-        this.publisher = publisher;
-        this.jdbc = jdbc;
+        this.bookings = bookings; this.customers = customers;
+        this.factory = factory; this.publisher = publisher; this.jdbc = jdbc;
     }
 
     // ---- Scenario 1: Check venue availability ----
@@ -54,17 +51,13 @@ public class BookingService {
         return !bookings.existsByEventDateAndStatusIn(date, DATE_BLOCKING);
     }
 
-    /**
-     * Scenario 1, alternate 2a: the date must be a valid future date.
-     */
+    /** Scenario 1, alternate 2a: the date must be a valid future date. */
     public void requireFutureDate(LocalDate date) {
         if (date == null || !date.isAfter(LocalDate.now()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please choose a valid future date");
     }
 
-    /**
-     * Scenario 1, alternate 3a: the nearest open dates around a date that is taken.
-     */
+    /** Scenario 1, alternate 3a: the nearest open dates around a date that is taken. */
     @Transactional(readOnly = true)
     public List<LocalDate> nearestAvailableDates(LocalDate around, int count) {
         List<LocalDate> result = new ArrayList<>();
@@ -135,11 +128,8 @@ public class BookingService {
     }
 
     private void flushOrBadRequest(String message) {
-        try {
-            bookings.flush();
-        } catch (DataIntegrityViolationException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
-        }
+        try { bookings.flush(); }
+        catch (DataIntegrityViolationException ex) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
     }
 
     private Booking editableBooking(Long id) {
@@ -163,7 +153,7 @@ public class BookingService {
         requireSubmitted(b);
         guard(b, BookingStatus.CONFIRMED);
         b.changeStatus(BookingStatus.CONFIRMED);
-        b.setConfirmedAt(LocalDateTime.now());   // deposit due date = this + 7 days
+        b.setConfirmedAt(LocalDateTime.now());   // deposit due date = this + 3 days
         publisher.publishEvent(new BookingEvent(b, Type.CONFIRMED));
         return b;
     }
@@ -178,6 +168,41 @@ public class BookingService {
         b.setCancellationReason(reason);
         publisher.publishEvent(new BookingEvent(b, Type.REJECTED));
         return b;
+    }
+
+    // ---- Scenario 4: deposit (Rs. 20,000) must be received within 3 days of confirmation ----
+    /** Manual: the administrator confirms that the deposit was received. */
+    public Booking confirmDepositManually(Long id) {
+        return receiveDeposit(id, "ADMIN");
+    }
+
+    /** Automatic: also callable by the Payments code the moment it records a Deposit payment. */
+    public Booking confirmDepositAutomatically(Long id) {
+        return receiveDeposit(id, "AUTO");
+    }
+
+    private Booking receiveDeposit(Long id, String by) {
+        Booking b = get(id);
+        if (b.getStatus() != BookingStatus.CONFIRMED)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a Confirmed booking can receive a deposit");
+        if (b.isDepositReceived())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "The deposit was already confirmed");
+        b.markDepositReceived(by);
+        publisher.publishEvent(new BookingEvent(b, Type.DEPOSIT_RECEIVED));
+        return b;
+    }
+
+    /** Automatic check: marks every Confirmed booking that already has a Deposit row in Payments. */
+    public int autoConfirmDeposits() {
+        int count = 0;
+        for (Booking b : bookings.findByStatus(BookingStatus.CONFIRMED)) {
+            if (!b.isDepositReceived() && Boolean.TRUE.equals(depositPaymentExists(b))) {
+                b.markDepositReceived("AUTO");
+                publisher.publishEvent(new BookingEvent(b, Type.DEPOSIT_RECEIVED));
+                count++;
+            }
+        }
+        return count;
     }
 
     private void requireSubmitted(Booking b) {
@@ -239,18 +264,14 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
     }
 
-    /**
-     * Admin list: Pending shows only submitted bookings (drafts are hidden).
-     */
+    /** Admin list: Pending shows only submitted bookings (drafts are hidden). */
     @Transactional(readOnly = true)
     public List<Booking> byStatus(BookingStatus s) {
         return s == BookingStatus.PENDING ? bookings.findByStatusAndSubmittedTrue(s) : bookings.findByStatus(s);
     }
 
     @Transactional(readOnly = true)
-    public List<Booking> byCustomer(Long customerId) {
-        return bookings.findByCustomerId(customerId);
-    }
+    public List<Booking> byCustomer(Long customerId) { return bookings.findByCustomerId(customerId); }
 
     @Transactional(readOnly = true)
     public List<Booking> byPhone(String phone) {
@@ -264,9 +285,7 @@ public class BookingService {
                     "Cannot change booking from " + b.getStatus() + " to " + target);
     }
 
-    /**
-     * Removes the booking's rows in Function 3's StaffAssignment table.
-     */
+    /** Removes the booking's rows in Function 3's StaffAssignment table. */
     private void releaseStaff(Booking b) {
         try {
             jdbc.update("DELETE FROM StaffAssignment WHERE booking_id = ?", b.getId());
@@ -277,7 +296,7 @@ public class BookingService {
     }
 
     // ---- Scheduled clean-up: releases dates held by abandoned drafts and unpaid bookings ----
-    @Scheduled(fixedRate = 3_600_000)
+    @Scheduled(fixedRate = 900_000)   // every 15 minutes
     public void expireStaleBookings() {
         LocalDateTime draftCutoff = LocalDateTime.now().minusHours(DRAFT_EXPIRY_HOURS);
         for (Booking b : bookings.findByStatusAndSubmittedFalseAndLastActivityAtBefore(BookingStatus.PENDING, draftCutoff)) {
@@ -285,22 +304,22 @@ public class BookingService {
             b.setCancellationReason("Expired: draft not submitted within " + DRAFT_EXPIRY_HOURS + " hours");
             publisher.publishEvent(new BookingEvent(b, Type.CANCELLED));
         }
-        // Scenario 4, alternate 6a: deposit not received within 7 days of confirmation.
+        autoConfirmDeposits();   // automatic deposit confirmation from the Payment table
+        // Scenario 4, alternate 6a: deposit not received within 3 days of confirmation.
         LocalDateTime depositCutoff = LocalDateTime.now().minusDays(Booking.DEPOSIT_DAYS);
         for (Booking b : bookings.findByStatusAndConfirmedAtBefore(BookingStatus.CONFIRMED, depositCutoff)) {
-            if (!isDepositPaid(b)) {
-                b.changeStatus(BookingStatus.CANCELLED);
-                b.setCancellationReason("Deposit not received within " + Booking.DEPOSIT_DAYS + " days");
-                releaseStaff(b);
-                publisher.publishEvent(new BookingEvent(b, Type.DEPOSIT_OVERDUE));
-            }
+            if (b.isDepositReceived()) continue;
+            Boolean paid = depositPaymentExists(b);
+            if (paid == null || paid) continue;   // cannot check the Payment table, or it is paid
+            b.changeStatus(BookingStatus.CANCELLED);
+            b.setCancellationReason("Deposit not received within " + Booking.DEPOSIT_DAYS + " days");
+            releaseStaff(b);
+            publisher.publishEvent(new BookingEvent(b, Type.DEPOSIT_OVERDUE));
         }
     }
 
-    /**
-     * Reads the Payment table (Function 4): is there a Deposit row for this booking?
-     */
-    protected boolean isDepositPaid(Booking b) {
+    /** Reads the Payment table (Function 4): TRUE/FALSE = Deposit row exists or not, null = cannot check. */
+    protected Boolean depositPaymentExists(Booking b) {
         try {
             Integer n = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND payment_type = 'Deposit'",
@@ -308,7 +327,7 @@ public class BookingService {
             return n != null && n > 0;
         } catch (DataAccessException ex) {
             log.warn("Could not read Payment for booking #{}: {}", b.getId(), ex.getMessage());
-            return true;   // cannot check -> do not cancel the booking
+            return null;
         }
     }
 }

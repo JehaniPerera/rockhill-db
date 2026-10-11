@@ -3,11 +3,11 @@ package com.rockhill.reception_hall.booking.dto;
 import com.rockhill.reception_hall.booking.model.*;
 import java.time.LocalDate;
 
-
 public record BookingResponse(Long id, String customerName, LocalDate eventDate, EventType eventType,
                               int guestCount, BookingStatus status, boolean submitted, boolean venueDamaged,
                               LocalDate depositDueDate, LocalDate balanceDueDate, String cancellationReason,
-                              Long packageId, Long menuId, String eventDescription, String venueDamageNotes) {
+                              Long packageId, Long menuId, String eventDescription, String venueDamageNotes,
+                              boolean depositReceived, String depositConfirmedBy) {
     public static BookingResponse from(Booking b) {
         boolean confirmed = b.getStatus() == BookingStatus.CONFIRMED;
         Long pkg = b instanceof WeddingBooking w ? w.getPackageId() : null;
@@ -17,6 +17,7 @@ public record BookingResponse(Long id, String customerName, LocalDate eventDate,
                 b.getGuestCount(), b.getStatus(), b.isSubmitted(), b.isVenueDamaged(),
                 confirmed ? b.getDepositDueDate() : null,
                 confirmed ? b.getBalanceDueDate() : null,
-                b.getCancellationReason(), pkg, menu, desc, b.getVenueDamageNotes());
+                b.getCancellationReason(), pkg, menu, desc, b.getVenueDamageNotes(),
+                b.isDepositReceived(), b.getDepositConfirmedBy());
     }
 }
