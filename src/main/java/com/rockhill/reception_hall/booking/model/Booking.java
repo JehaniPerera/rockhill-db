@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Table(name = "Booking")
 @Inheritance(strategy = InheritanceType.JOINED)
 public abstract class Booking {
-    public static final int DEPOSIT_DAYS = 7;
+    public static final int DEPOSIT_DAYS = 3;
     public static final int BALANCE_DAYS_BEFORE_EVENT = 14;
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,6 +51,14 @@ public abstract class Booking {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
+    /** When the Rs. 20,000 deposit was confirmed (null = not received yet). */
+    @Column(name = "deposit_received_at")
+    private LocalDateTime depositReceivedAt;
+
+    /** How the deposit was confirmed: "AUTO" (found in Payments) or "ADMIN" (confirmed manually). */
+    @Column(name = "deposit_confirmed_by", length = 10)
+    private String depositConfirmedBy;
+
     @Column(name = "last_activity_at", nullable = false)
     private LocalDateTime lastActivityAt = LocalDateTime.now();
 
@@ -71,15 +79,22 @@ public abstract class Booking {
     /** Keeps the 24-hour draft-expiry clock alive (also called by Function 2 when selections change). */
     public void touch() { this.lastActivityAt = LocalDateTime.now(); }
 
-    /** Deposit is due 7 days after confirmation (calculated, not stored). */
+    /** Deposit is due 3 days after confirmation (calculated, not stored). */
     public LocalDate getDepositDueDate() {
         return confirmedAt == null ? null : confirmedAt.toLocalDate().plusDays(DEPOSIT_DAYS);
     }
 
-
     /** Balance is due 14 days before the event (calculated, not stored). */
     public LocalDate getBalanceDueDate() {
         return eventDate == null ? null : eventDate.minusDays(BALANCE_DAYS_BEFORE_EVENT);
+    }
+
+    public boolean isDepositReceived() { return depositReceivedAt != null; }
+    public String getDepositConfirmedBy() { return depositConfirmedBy; }
+    public void markDepositReceived(String by) {
+        this.depositReceivedAt = LocalDateTime.now();
+        this.depositConfirmedBy = by;
+        touch();
     }
 
     public Long getId() { return id; }
