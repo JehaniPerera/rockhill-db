@@ -30,6 +30,14 @@ public class PaymentRepository {
         return rows.stream().findFirst();
     }
 
+    // true once the administrator has approved the date for this booking
+    public boolean isAvailabilityApproved(int bookingId) {
+        Boolean approved = jdbc.queryForObject(
+                "SELECT availability_approved FROM Booking WHERE booking_id = ?",
+                Boolean.class, bookingId);
+        return approved != null && approved;
+    }
+
     // true when the event is less than 14 days away (the client's "pay everything at once" rule)
     public boolean isWithinBalanceWindow(int bookingId) {
         Integer days = jdbc.queryForObject(
@@ -43,6 +51,14 @@ public class PaymentRepository {
                 "SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND payment_type = ?",
                 Integer.class, bookingId, type.dbValue());
         return count == null ? 0 : count;
+    }
+
+    // true when the deposit has already been refunded or forfeited
+    public boolean isRefundProcessed(int bookingId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND payment_type = 'Deposit' AND refund_status <> 'N/A'",
+                Integer.class, bookingId);
+        return count != null && count > 0;
     }
 
     public Payment save(Payment p) {
@@ -67,7 +83,7 @@ public class PaymentRepository {
     }
 
     public void updateDepositRefundStatus(int bookingId, Payment.RefundStatus status) {
-        jdbc.update("UPDATE Payment SET refund_status = ? WHERE booking_id = ? AND payment_type = 'Deposit'",
+        jdbc.update("UPDATE Payment SET refund_status = ?, refund_date = CURDATE() WHERE booking_id = ? AND payment_type = 'Deposit'",
                 status.dbValue(), bookingId);
     }
 
@@ -77,7 +93,8 @@ public class PaymentRepository {
                         "DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
                         "DATE_FORMAT(GREATEST(DATE_SUB(b.event_date, INTERVAL 14 DAY), CURDATE()), '%Y-%m-%d') AS balance_due_date, " +
                         "(DATEDIFF(b.event_date, CURDATE()) < 14) AS late_booking, " +
-                        "b.guest_count, b.status, b.total_price, b.venue_damaged, " +
+                        "b.guest_count, b.status, b.total_price, b.venue_damaged, b.availability_approved, " +
+                        "(SELECT p.refund_status FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Deposit') AS deposit_refund_status, " +
                         "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Deposit') AS deposit_paid, " +
                         "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Balance') AS balance_paid, " +
                         "(SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.booking_id = b.booking_id) AS paid_total, " +
