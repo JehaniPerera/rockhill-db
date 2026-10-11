@@ -76,6 +76,7 @@ public abstract class Booking {
         return confirmedAt == null ? null : confirmedAt.toLocalDate().plusDays(DEPOSIT_DAYS);
     }
 
+
     /** Balance is due 14 days before the event (calculated, not stored). */
     public LocalDate getBalanceDueDate() {
         return eventDate == null ? null : eventDate.minusDays(BALANCE_DAYS_BEFORE_EVENT);
