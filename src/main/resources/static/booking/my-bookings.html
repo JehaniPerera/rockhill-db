@@ -27,7 +27,7 @@
     </div>
     <div class="card hidden" id="resultCard">
         <table>
-            <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Guests</th><th>Status</th><th>Deposit due</th><th>Balance due</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Guests</th><th>Status</th><th>Deposit (Rs. 20,000)</th><th>Balance due</th><th></th></tr></thead>
             <tbody id="rows"></tbody>
         </table>
     </div>
@@ -51,7 +51,7 @@
                 tr.appendChild(cell(b.eventType === 'WEDDING' ? 'Wedding' : (b.eventDescription || 'Other event')));
                 tr.appendChild(cell(b.guestCount));
                 tr.appendChild(statusCell(b.status + (b.status === 'PENDING' && !b.submitted ? ' (draft)' : '')));
-                tr.appendChild(cell(b.status === 'CONFIRMED' ? b.depositDueDate : ''));
+                tr.appendChild(cell(b.status === 'CONFIRMED' ? (b.depositReceived ? 'Received' : 'Pay by ' + b.depositDueDate) : ''));
                 tr.appendChild(cell(b.status === 'CONFIRMED' ? b.balanceDueDate : ''));
                 const td = document.createElement('td');
                 if (b.status === 'CONFIRMED' || (b.status === 'PENDING' && b.submitted)) {
