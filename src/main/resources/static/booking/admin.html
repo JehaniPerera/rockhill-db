@@ -50,13 +50,13 @@
                 tr.appendChild(cell(b.id));
                 tr.appendChild(cell(b.customerName));
                 tr.appendChild(cell(b.eventDate));
-                tr.appendChild(cell(b.eventType === 'WEDDING' ? 'Wedding' : 'Other'));
+                tr.appendChild(cell(b.eventType === 'WEDDING' ? 'Wedding' : (b.eventDescription || 'Other event')));
                 tr.appendChild(cell(b.guestCount));
                 tr.appendChild(statusCell(b.status));
                 let note = '';
                 if (b.status === 'CONFIRMED') note = 'Deposit due ' + b.depositDueDate + ', balance due ' + b.balanceDueDate;
                 if (b.status === 'CANCELLED') note = b.cancellationReason || '';
-                if (b.status === 'COMPLETED') note = b.venueDamaged ? 'Venue damaged' : 'No damage';
+                if (b.status === 'COMPLETED') note = b.venueDamaged ? 'Venue damaged' + (b.venueDamageNotes ? ': ' + b.venueDamageNotes : '') : 'No damage';
                 tr.appendChild(cell(note));
                 const td = document.createElement('td');
                 if (b.status === 'PENDING') {
@@ -87,16 +87,24 @@
     function cancel(id) {
         const reason = prompt('Reason for cancelling:');
         if (reason === null) return;
+        if (!confirm('Cancel booking #' + id + '? This releases the date and frees assigned staff.')) return;
         return call('/api/bookings/' + id + '/cancel', { method: 'POST', body: JSON.stringify({ reason: reason }) }, 'Booking #' + id + ' cancelled.');
     }
-    function reschedule(id) {
-        const d = prompt('New event date (YYYY-MM-DD):');
+    async function reschedule(id) {
+        clearMsg('msg');
+        let d;
+        try { d = await askNewDate(); } catch (e) { showMsg('msg', e.message); return; }
         if (!d) return;
         return call('/api/bookings/' + id + '/reschedule?newDate=' + encodeURIComponent(d) + '&byCustomer=false', { method: 'POST' }, 'Booking #' + id + ' rescheduled.');
     }
     function complete(id) {
         const dmg = confirm('Was the venue damaged?\n\nOK = YES (deposit is kept)\nCancel = NO (deposit is refunded)');
-        return call('/api/bookings/' + id + '/complete?venueDamaged=' + dmg, { method: 'POST' }, 'Booking #' + id + ' marked completed.');
+        let notes = '';
+        if (dmg) {
+            notes = prompt('Describe the damage (notes are saved for follow-up billing):') || '';
+        }
+        return call('/api/bookings/' + id + '/complete?venueDamaged=' + dmg + '&notes=' + encodeURIComponent(notes),
+            { method: 'POST' }, 'Booking #' + id + ' marked completed.');
     }
     statusSel.addEventListener('change', load);
     load();

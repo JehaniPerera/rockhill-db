@@ -1,225 +1,248 @@
-function initBooking(cfg) {
+// booking-flow.js - used by wedding-booking.html and event-booking.html
+// initBookingPage('WEDDING') or initBookingPage('OTHER')
+function initBookingPage(type) {
+    const isWedding = type === 'WEDDING';
     const $ = id => document.getElementById(id);
-    let bookingId = null;
+    let booking = null;           // the Pending draft once it is created
+    let selectionId = null;       // chosen package / menu id
+    let selectionName = '';       // its name, for the summary
+    const selectedDecor = {};     // category -> decorId (one item per singular category)
 
-    // Function 2's JSON uses addonId / decorId / packageId / menuId as the id field.
-    const idOf = i => [i.addonId, i.decorId, i.packageId, i.menuId, i.id].find(v => v !== undefined && v !== null);
-    const money = n => 'Rs. ' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    $('eventDate').min = tomorrow();
 
-    function label(i) {
-        const t = i.category ? i.category + ' - ' + i.name : i.name;
-        if (i.pricePerGuest != null) return t + ' - ' + money(i.pricePerGuest) + ' per guest';
-        if (i.price != null) {
-            const free = cfg.wedding && (i.category !== undefined || i.includedInPackage);
-            return t + (free ? ' - included in package'
-                : ' - ' + money(i.price) + (i.unitType ? ' (' + i.unitType + ')' : ''));
-        }
-        return t;
-    }
-
-    $('eventDate').min = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    $('eventDate').onchange = () => { if (!bookingId) $('step2').classList.add('hidden'); };
-
-    async function loadOptions(url) {
-        try { const r = await api(url); return Array.isArray(r) ? r : null; } catch (e) { return null; }
-    }
-
-    // ---------- package / menu list (needed in step 2) ----------
-    async function fillSelection() {
-        const sel = $('selection');
-        const items = await loadOptions(cfg.optionsUrl);
-        if (items && items.length) {
-            sel.innerHTML = '<option value="">-- choose --</option>';
-            items.forEach(i => {
-                const o = document.createElement('option');
-                o.value = idOf(i); o.textContent = label(i);
-                sel.appendChild(o);
+    // ---------- load lists from Function 2 ----------
+    async function loadOptions() {
+        try {
+            const list = await api(isWedding ? '/api/packages' : '/api/menus');
+            const box = $('selectionList');
+            box.innerHTML = '';
+            list.forEach(item => {
+                const id = isWedding ? item.packageId : item.menuId;
+                const lab = document.createElement('label');
+                lab.className = 'option';
+                const r = document.createElement('input');
+                r.type = 'radio'; r.name = 'selection'; r.value = id;
+                r.addEventListener('change', () => onSelectionChange(id, item.name));
+                lab.appendChild(r);
+                lab.appendChild(document.createTextNode(item.name));
+                const small = document.createElement('small');
+                small.textContent = isWedding ? (item.description || '') : (money(item.pricePerGuest) + ' per guest');
+                lab.appendChild(small);
+                box.appendChild(lab);
             });
-        } else {
-            const inp = document.createElement('input');
-            inp.type = 'number'; inp.id = 'selection';
-            inp.placeholder = 'Enter ' + cfg.selectionLabel + ' ID';
-            sel.replaceWith(inp);
-        }
+            const addons = await api('/api/addons?eventType=' + (isWedding ? 'Wedding' : 'Other'));
+            renderAddons(addons);
+            const decor = await api('/api/decor-options');
+            renderDecor(decor);
+        } catch (e) { showMsg('msg', 'Could not load options: ' + e.message); }
     }
-    fillSelection();
 
-    // ---------- Step 1: check availability ----------
-    $('checkBtn').onclick = async () => {
-        const msg = $('msg1'); clearMsg(msg);
+    function renderAddons(items) {
+        const box = $('addonList');
+        box.innerHTML = '';
+        if (!items.length) { box.textContent = 'None available.'; return; }
+        items.forEach(a => {
+            const lab = document.createElement('label');
+            lab.className = 'option';
+            const c = document.createElement('input');
+            c.type = 'checkbox'; c.disabled = true; c.dataset.locked = '1';
+            c.addEventListener('change', () => toggle(c, 'addons', a.addonId));
+            lab.appendChild(c);
+            lab.appendChild(document.createTextNode(a.name));
+            const small = document.createElement('small');
+            const included = isWedding && a.includedInPackage;
+            small.textContent = (included ? 'Included in the package' : money(a.price)) + (a.unitType ? ' / ' + a.unitType : '');
+            lab.appendChild(small);
+            box.appendChild(lab);
+        });
+    }
+
+    // Singular categories (Poruwa, Settee Back, ...): pick one. Table decoration: tick it.
+    function renderDecor(items) {
+        const box = $('decorList');
+        box.innerHTML = '';
+        if (!items.length) { box.textContent = 'None available.'; return; }
+        const groups = {};
+        items.forEach(d => { (groups[d.category] = groups[d.category] || []).push(d); });
+        Object.keys(groups).forEach(cat => {
+            const h = document.createElement('h3');
+            h.textContent = cat;
+            h.style.margin = '14px 0 4px';
+            box.appendChild(h);
+            const singular = !!groups[cat][0].isSingular;
+            groups[cat].forEach(d => {
+                const lab = document.createElement('label');
+                lab.className = 'option';
+                const c = document.createElement('input');
+                c.type = singular ? 'radio' : 'checkbox';
+                c.name = 'decor-' + cat; c.disabled = true; c.dataset.locked = '1';
+                c.addEventListener('change', () => {
+                    if (singular) chooseSingularDecor(cat, d.decorId, c);
+                    else toggle(c, 'decor', d.decorId);
+                });
+                lab.appendChild(c);
+                lab.appendChild(document.createTextNode(d.name));
+                const small = document.createElement('small');
+                small.textContent = isWedding ? 'Included in the package' : money(d.price);
+                lab.appendChild(small);
+                box.appendChild(lab);
+            });
+            if (singular) {                       // allow "no choice" for optional singular decor
+                const none = document.createElement('label');
+                none.className = 'option';
+                const c = document.createElement('input');
+                c.type = 'radio'; c.name = 'decor-' + cat; c.disabled = true; c.dataset.locked = '1'; c.checked = true;
+                c.addEventListener('change', () => clearSingularDecor(cat, c));
+                none.appendChild(c);
+                none.appendChild(document.createTextNode('None'));
+                box.appendChild(none);
+            }
+        });
+    }
+
+    // ---------- step 1: availability ----------
+    function showSuggestions(list) {
+        const box = $('suggestions');
+        box.innerHTML = '';
+        if (!list || !list.length) return;
+        box.appendChild(document.createTextNode('Nearest open dates: '));
+        list.forEach(d => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'btn small secondary'; b.textContent = d;
+            b.addEventListener('click', () => { $('eventDate').value = d; box.innerHTML = ''; clearMsg('msg'); });
+            box.appendChild(b);
+        });
+    }
+
+    async function checkAvailability() {
         const date = $('eventDate').value;
-        if (!date) return showMsg(msg, 'Please choose a date.', 'error');
+        if (!date) { showMsg('msg', 'Please pick an event date.'); return false; }
         try {
             const r = await api('/api/bookings/availability?date=' + date);
-            if (r.available) {
-                showMsg(msg, date + ' is available.', 'success');
-                $('step2').classList.remove('hidden');
-            } else {
-                showMsg(msg, date + ' is already booked. Please choose another date.', 'error');
-                $('step2').classList.add('hidden');
-            }
-        } catch (e) { showMsg(msg, e.message, 'error'); }
-    };
+            if (r.available) { $('suggestions').innerHTML = ''; showMsg('msg', date + ' is available.', 'success'); return true; }
+            showMsg('msg', 'Date not available.');
+            showSuggestions(r.suggestions);
+            return false;
+        } catch (e) { showMsg('msg', e.message); return false; }
+    }
+    $('checkBtn').addEventListener('click', async () => { clearMsg('msg'); $('suggestions').innerHTML = ''; await checkAvailability(); });
 
-    // ---------- Step 2: details + package/menu -> creates the Pending booking ----------
-    $('createBtn').onclick = async () => {
-        const msg = $('msg2'); clearMsg(msg);
-        const name = $('name').value.trim();
-        const phone = $('phone').value.trim();
-        const guests = parseInt($('guests').value, 10);
-        const selection = parseInt($('selection').value, 10);
-        if (!name || !phone) return showMsg(msg, 'Name and phone are required.', 'error');
-        if (isNaN(guests) || guests < cfg.minGuests || guests > cfg.maxGuests)
-            return showMsg(msg, cfg.guestMsg, 'error');
-        if (isNaN(selection)) return showMsg(msg, 'Please choose a ' + cfg.selectionLabel + '.', 'error');
+    // ---------- step 2: create the Pending draft ----------
+    async function onSelectionChange(id, name) {
+        selectionId = id; selectionName = name;
+        if (!booking) return;                       // draft not created yet
+        try {                                       // draft exists -> change package / menu
+            booking = await api('/api/bookings/' + booking.id + (isWedding ? '/package/' : '/menu/') + id, { method: 'PUT' });
+            refreshSummary();
+        } catch (e) { showMsg('msg', e.message); }
+    }
+
+    $('holdBtn').addEventListener('click', async () => {
+        clearMsg('msg'); $('suggestions').innerHTML = '';
         const body = {
-            customerName: name,
-            customerPhone: phone,
-            customerEmail: $('email').value.trim() || null,
+            customerName: $('customerName').value.trim(),
+            customerPhone: $('customerPhone').value.trim(),
+            customerEmail: $('customerEmail').value.trim(),
             eventDate: $('eventDate').value,
-            eventType: cfg.eventType,
-            guestCount: guests,
-            selectionId: selection
+            eventType: type,
+            guestCount: parseInt($('guestCount').value, 10),
+            selectionId: selectionId
         };
+        if (!isWedding && $('eventDescription')) body.eventDescription = $('eventDescription').value;
+        if (!body.customerName || !body.customerPhone || !body.customerEmail) { showMsg('msg', 'Please fill in your name, phone and email.'); return; }
+        if (!body.eventDate) { showMsg('msg', 'Please pick an event date.'); return; }
+        if (!body.guestCount || body.guestCount < 1) { showMsg('msg', 'Please enter the number of guests.'); return; }
+        if (isWedding && (body.guestCount < 100 || body.guestCount > 300)) { showMsg('msg', 'Wedding guest count must be between 100 and 300. Please correct it or contact the administrator.'); return; }
+        if (!selectionId) { showMsg('msg', isWedding ? 'Please choose a package. A package is required for weddings.' : 'Please choose a menu. A menu is required for events.'); return; }
         try {
-            const b = await api(cfg.createUrl, { method: 'POST', body: JSON.stringify(body) });
-            bookingId = b.id;
-            ['eventDate', 'checkBtn', 'name', 'phone', 'email', 'guests', 'selection', 'createBtn']
-                .forEach(id => $(id).disabled = true);
-            showMsg(msg, 'Booking request #' + bookingId + ' started. You can now add extras below.', 'success');
-            $('step3').classList.remove('hidden');
-            fillChecks('addons', cfg.addonsUrl, true);
-            fillChecks('decor', cfg.decorUrl, false);
-        } catch (e) { showMsg(msg, e.message, 'error'); }
-    };
-
-    // ---------- Step 3: add-ons and decor (Function 2 endpoints) ----------
-    async function fillChecks(containerId, url, withQty) {
-        const box = $(containerId);
-        const items = await loadOptions(url);
-        box.innerHTML = '';
-        if (items && items.length) {
-            items.forEach(i => {
-                const l = document.createElement('label');
-                const c = document.createElement('input');
-                c.type = 'checkbox'; c.value = idOf(i);
-                const t = document.createElement('span'); t.textContent = label(i);
-                l.append(c, t);
-                if (withQty) {
-                    const q = document.createElement('input');
-                    q.type = 'number'; q.min = 1; q.placeholder = 'auto'; q.title = 'Quantity (leave empty for automatic)';
-                    l.appendChild(q);
-                }
-                box.appendChild(l);
-            });
-        } else if (!items) {
-            const inp = document.createElement('input');
-            inp.type = 'text'; inp.className = 'ids-input';
-            inp.placeholder = 'Optional: IDs separated by commas';
-            box.appendChild(inp);
-        } else {
-            box.textContent = 'Nothing to choose here.';
+            booking = await api(isWedding ? '/api/bookings/wedding' : '/api/bookings/event', { method: 'POST', body: JSON.stringify(body) });
+            ['customerName', 'customerPhone', 'customerEmail', 'eventDate', 'guestCount', 'eventDescription'].forEach(id => { if ($(id)) $(id).disabled = true; });
+            $('checkBtn').disabled = true;
+            $('holdBtn').classList.add('hidden');
+            document.querySelectorAll('#extras input').forEach(c => c.disabled = false);
+            $('extras').classList.remove('hidden');
+            $('submitBtn').classList.remove('hidden');
+            $('discardBtn').classList.remove('hidden');
+            showMsg('msg', 'Your date is held (booking #' + booking.id + '). Choose extras, then press "Submit request". Unsubmitted drafts expire after 24 hours.', 'success');
+            refreshSummary();
+        } catch (e) {
+            showMsg('msg', e.message);
+            if (/not available|just taken/i.test(e.message)) {     // show nearest open dates
+                try { const r = await api('/api/bookings/availability?date=' + body.eventDate); showSuggestions(r.suggestions); } catch (x) { /* ignore */ }
+            }
         }
-    }
-
-    function checkedItems(containerId) {
-        const box = $(containerId);
-        const txt = box.querySelector('.ids-input');
-        if (txt) {
-            return txt.value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
-                .map(id => ({ id: id, quantity: null }));
-        }
-        return [...box.querySelectorAll('label')]
-            .filter(l => l.querySelector('input[type=checkbox]').checked)
-            .map(l => {
-                const q = l.querySelector('input[type=number]');
-                return { id: parseInt(l.querySelector('input[type=checkbox]').value, 10),
-                    quantity: q && q.value ? parseInt(q.value, 10) : null };
-            });
-    }
-
-    // Makes the server's selections equal to what is ticked: remove the unticked, add/update the ticked.
-    async function syncSelections(kind, wanted) {
-        const base = '/api/bookings/' + bookingId + '/selections/' + kind;
-        const existing = await api(base);
-        const wantedIds = new Set(wanted.map(w => w.id));
-        for (const e of existing) {
-            if (!wantedIds.has(e.itemId)) await api(base + '/' + e.itemId, { method: 'DELETE' });
-        }
-        for (const w of wanted) {
-            const q = (kind === 'addons' && w.quantity) ? '?quantity=' + w.quantity : '';
-            await api(base + '/' + w.id + q, { method: 'POST' });
-        }
-    }
-
-    $('saveBtn').onclick = async () => {
-        const msg = $('msg3'); clearMsg(msg);
-        try {
-            await syncSelections('addons', checkedItems('addons'));
-            await syncSelections('decor', checkedItems('decor'));
-            showMsg(msg, 'Extras saved.', 'success');
-            await showSummary();
-        } catch (e) { showMsg(msg, e.message, 'error'); }
-    };
-
-    // ---------- Step 4: summary with price estimate + submit ----------
-    async function showSummary() {
-        const base = '/api/bookings/' + bookingId + '/selections';
-        const b = await api('/api/bookings/' + bookingId);
-        const addons = await api(base + '/addons');
-        const decor = await api(base + '/decor');
-        const fmt = list => list.length
-            ? list.map(x => x.name + ' x ' + x.quantity + ' = ' + money(x.lineTotal)).join('; ') : 'none';
-        const rows = [
-            ['Reference', '#' + b.id], ['Customer', b.customerName], ['Event type', b.eventType],
-            ['Date', b.eventDate], ['Guests', b.guestCount],
-            [cfg.selectionLabel + ' ID', b.packageId || b.menuId],
-            ['Add-ons', fmt(addons)], ['Decor', fmt(decor)]
-        ];
-        try {
-            const e = await api(base + '/estimate');
-            rows.push(['Base price', money(e.basePrice)]);
-            if (e.lowGuestSurcharge > 0) rows.push(['Low-guest charge', money(e.lowGuestSurcharge)]);
-            rows.push(['Add-ons total', money(e.addOnTotal)], ['Decor total', money(e.decorTotal)],
-                ['Estimated total', money(e.total)]);
-        } catch (err) {
-            rows.push(['Estimated total', 'Not available: ' + err.message]);
-        }
-        const t = $('summary'); t.innerHTML = '';
-        rows.forEach(([k, v]) => {
-            const tr = document.createElement('tr');
-            const th = document.createElement('th'); th.textContent = k;
-            const td = document.createElement('td'); td.textContent = v;
-            tr.append(th, td); t.appendChild(tr);
-        });
-        $('step4').classList.remove('hidden');
-    }
-
-    function lockAll() {
-        document.querySelectorAll('#step3 button, #step4 button, #step3 input')
-            .forEach(el => el.disabled = true);
-    }
-
-    $('submitBtn').onclick = async () => {
-        const msg = $('msg4'); clearMsg(msg);
-        try {
-            await api('/api/bookings/' + bookingId + '/submit', { method: 'POST' });
-            showMsg(msg, 'Your request #' + bookingId + ' has been submitted. The hall administrator will confirm or reject it. '
-                + 'If it is confirmed, a Rs. 20,000 deposit is due within 7 days.', 'success');
-            lockAll();
-        } catch (e) { showMsg(msg, e.message, 'error'); }
-    };
-
-    document.querySelectorAll('.cancel-request').forEach(btn => {
-        btn.onclick = async () => {
-            if (!confirm('Cancel this booking request?')) return;
-            try {
-                await api('/api/bookings/' + bookingId + '/cancel',
-                    { method: 'POST', body: JSON.stringify({ reason: 'Cancelled by customer before submission' }) });
-                showMsg($('msg3'), 'Request cancelled. The date has been released.', 'info');
-                showMsg($('msg4'), 'Request cancelled. The date has been released.', 'info');
-                lockAll();
-            } catch (e) { showMsg($('msg3'), e.message, 'error'); }
-        };
     });
+
+    // ---------- step 3: add-ons / decor ----------
+    async function toggle(c, kind, id) {
+        clearMsg('msg');
+        try {
+            await api('/api/bookings/' + booking.id + '/selections/' + kind + '/' + id, { method: c.checked ? 'POST' : 'DELETE' });
+            refreshSummary();
+        } catch (e) { c.checked = !c.checked; showMsg('msg', e.message); }
+    }
+
+    async function chooseSingularDecor(cat, id, input) {
+        clearMsg('msg');
+        try {
+            await api('/api/bookings/' + booking.id + '/selections/decor/' + id, { method: 'POST' });  // server replaces the old one in this category
+            selectedDecor[cat] = id;
+            refreshSummary();
+        } catch (e) { showMsg('msg', e.message); input.checked = false; }
+    }
+
+    async function clearSingularDecor(cat, input) {
+        clearMsg('msg');
+        const old = selectedDecor[cat];
+        if (!old) return;
+        try {
+            await api('/api/bookings/' + booking.id + '/selections/decor/' + old, { method: 'DELETE' });
+            delete selectedDecor[cat];
+            refreshSummary();
+        } catch (e) { showMsg('msg', e.message); }
+    }
+
+    // ---------- summary (scenario 2 step 7 / scenario 3 step 6) ----------
+    async function refreshSummary() {
+        try {
+            const base = '/api/bookings/' + booking.id + '/selections/';
+            const [e, addons, decor] = await Promise.all([api(base + 'estimate'), api(base + 'addons'), api(base + 'decor')]);
+            const t = $('estimate');
+            t.innerHTML = '';
+            const row = (a, b, bold) => {
+                const tr = document.createElement('tr');
+                if (bold) tr.className = 'total';
+                tr.appendChild(cell(a)); tr.appendChild(cell(b)); t.appendChild(tr);
+            };
+            row(isWedding ? 'Package' : 'Menu', selectionName);
+            row('Date / guests', $('eventDate').value + ' / ' + $('guestCount').value);
+            row('Base price', money(e.basePrice));
+            if (e.lowGuestSurcharge) row('Low guest count charge', money(e.lowGuestSurcharge));
+            addons.forEach(l => row('Add-on: ' + l.name + ' x ' + l.quantity, l.lineTotal ? money(l.lineTotal) : 'Included'));
+            decor.forEach(l => row('Decor: ' + l.name + ' x ' + l.quantity, l.lineTotal ? money(l.lineTotal) : 'Included'));
+            row('Estimated total', money(e.total), true);
+            $('estimateCard').classList.remove('hidden');
+        } catch (e) { showMsg('msg', e.message); }
+    }
+
+    // ---------- step 4: submit or discard ----------
+    $('submitBtn').addEventListener('click', async () => {
+        clearMsg('msg');
+        try {
+            booking = await api('/api/bookings/' + booking.id + '/submit', { method: 'POST' });
+            $('submitBtn').disabled = true; $('discardBtn').disabled = true;
+            document.querySelectorAll('#extras input').forEach(c => c.disabled = true);
+            showMsg('msg', 'Request submitted! Your booking reference is #' + booking.id + '. The hall team will review it. Keep this number and your phone number to check it in "My bookings".', 'success');
+        } catch (e) { showMsg('msg', e.message); }
+    });
+
+    $('discardBtn').addEventListener('click', async () => {
+        if (!confirm('Discard this draft and release the date?')) return;
+        try {
+            await api('/api/bookings/' + booking.id + '/cancel', { method: 'POST', body: JSON.stringify({ reason: 'Customer discarded draft' }) });
+            location.reload();
+        } catch (e) { showMsg('msg', e.message); }
+    });
+
+    loadOptions();
 }
