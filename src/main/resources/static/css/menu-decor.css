@@ -22,3 +22,10 @@ button:hover, .btn:hover { background:var(--gold); }
 .btn-danger { background:#a33; }
 .badge { background:var(--gold); color:#fff; font-size:12px; padding:2px 8px; border-radius:10px; }
 .error { background:#fbeaea; border:1px solid #e0b4b4; padding:10px; border-radius:4px; }
+.card-dishes { margin-top:10px; }
+.card .btn-select { margin-top:12px; }
+button:disabled, .btn:disabled { background:#999; cursor:not-allowed; }
+.pending-note { font-size:12px; color:#777; margin:6px 0 0; }
+a.card { text-decoration:none; color:inherit; }
+a.card:hover { border-color:var(--gold); }
+.card.disabled { opacity:0.6; }

@@ -9,6 +9,13 @@
         <div class="card" th:each="m : ${menus}">
             <h3 th:text="${m.name}"></h3>
             <p class="price">Rs. <span th:text="${m.pricePerGuest}"></span> per guest</p>
+
+            <!-- RESERVED: dishes section goes here later. Not built yet. -->
+            <div class="card-dishes"></div>
+
+            <!-- PENDING: selecting a menu needs the booking code from Function 1 -->
+            <button type="button" class="btn-select" disabled>Select this menu</button>
+            <p class="pending-note">Selection available once booking is connected.</p>
         </div>
     </div>
 </main>
