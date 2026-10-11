@@ -15,7 +15,8 @@
             <td th:text="${t.maxGuests}"></td>
             <td th:text="${t.totalPrice}"></td>
             <td>
-                <form th:action="@{/admin/packages/{pid}/tiers/{tid}/delete(pid=${pkg.packageId},tid=${t.tierId})}" method="post">
+                <a class="btn" th:href="@{/admin/packages/{pid}/tiers/{tid}/edit(pid=${pkg.packageId},tid=${t.tierId})}">Edit</a>
+                <form th:action="@{/admin/packages/{pid}/tiers/{tid}/delete(pid=${pkg.packageId},tid=${t.tierId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
                 </form>
             </td>

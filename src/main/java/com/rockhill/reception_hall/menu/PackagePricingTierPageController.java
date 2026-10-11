@@ -49,6 +49,33 @@ public class PackagePricingTierPageController {
         return "redirect:/admin/packages/" + packageId + "/tiers";
     }
 
+    @GetMapping("/{tierId}/edit")
+    public String editForm(@PathVariable Integer packageId,
+                           @PathVariable Integer tierId, Model model) {
+        Optional<Package> pkg = packageService.getPackageById(packageId);
+        Optional<PackagePricingTier> tier = tierService.getTierById(tierId);
+        if (pkg.isEmpty() || tier.isEmpty()) {
+            return "redirect:/admin/packages/" + packageId + "/tiers";
+        }
+        model.addAttribute("pkg", pkg.get());
+        model.addAttribute("tier", tier.get());
+        return "tier/edit";
+    }
+
+    @PostMapping("/{tierId}/edit")
+    public String update(@PathVariable Integer packageId,
+                         @PathVariable Integer tierId,
+                         @ModelAttribute PackagePricingTier form) {
+        tierService.getTierById(tierId).ifPresent(existing -> {
+            existing.setTierNumber(form.getTierNumber());
+            existing.setMinGuests(form.getMinGuests());
+            existing.setMaxGuests(form.getMaxGuests());
+            existing.setTotalPrice(form.getTotalPrice());
+            tierService.saveTier(existing);
+        });
+        return "redirect:/admin/packages/" + packageId + "/tiers";
+    }
+
     @PostMapping("/{tierId}/delete")
     public String delete(@PathVariable Integer packageId, @PathVariable Integer tierId) {
         tierService.deleteTier(tierId);
