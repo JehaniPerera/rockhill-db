@@ -13,6 +13,7 @@
             <td th:text="${p.name}"></td>
             <td th:text="${p.description}"></td>
             <td>
+                <a class="btn" th:href="@{/admin/packages/{id}/edit(id=${p.packageId})}">Edit</a>
                 <a class="btn" th:href="@{/admin/packages/{id}/tiers(id=${p.packageId})}">Manage tiers</a>
                 <form th:action="@{/admin/packages/{id}/delete(id=${p.packageId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
