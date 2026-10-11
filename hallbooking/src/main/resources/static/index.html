@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rockhill Hall - Staff & Vendor Assignment</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><h1>Rockhill Hall Booking</h1><span>Staff &amp; Vendor Assignment</span></header>
+<nav>
+  <button class="tab active" data-tab="staff">Staff / Vendors</button>
+  <button class="tab" data-tab="avail">Availability</button>
+  <button class="tab" data-tab="assign">Assign to Booking</button>
+</nav>
+<main>
+<section id="tab-staff">
+  <form id="staff-form" class="card grid">
+    <input type="hidden" id="st-id">
+    <label>Name<input id="st-name" required maxlength="100"></label>
+    <label>Role<input id="st-role" required maxlength="50" placeholder="Waiter, Decorator..."></label>
+    <label>Type<select id="st-type"><option>Internal</option><option>Vendor</option></select></label>
+    <label>Contact<input id="st-contact" maxlength="100"></label>
+    <div class="actions"><button type="submit" id="st-save">Add</button><button type="button" class="ghost" id="st-cancel" hidden>Cancel edit</button></div>
+  </form>
+  <table class="card"><thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Type</th><th>Contact</th><th></th></tr></thead><tbody id="st-list"></tbody></table>
+</section>
+
+<section id="tab-avail" hidden>
+  <form id="av-form" class="card grid">
+    <label>Staff / Vendor<select id="av-staff"></select></label>
+    <label>Unavailable date<input type="date" id="av-date" required></label>
+    <label>Reason<input id="av-reason" maxlength="255"></label>
+    <div class="actions"><button type="submit">Mark unavailable</button></div>
+  </form>
+  <table class="card"><thead><tr><th>Date</th><th>Reason</th><th></th></tr></thead><tbody id="av-list"></tbody></table>
+</section>
+
+<section id="tab-assign" hidden>
+  <div class="card grid">
+    <label>Booking<select id="as-booking"></select></label>
+    <label>Filter by role (optional)<input id="as-role" placeholder="Waiter"></label>
+    <div class="actions"><button id="as-load">Load</button></div>
+  </div>
+  <h3>Assigned</h3>
+  <table class="card"><thead><tr><th>Name</th><th>Role</th><th>Type</th><th>Date</th><th>Replace with</th></tr></thead><tbody id="as-assigned"></tbody></table>
+  <h3>Available on event date</h3>
+  <div class="card"><div id="as-avail" class="checks"></div><button id="as-assign">Assign selected</button></div>
+</section>
+</main>
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
