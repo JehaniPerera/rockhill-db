@@ -4,6 +4,7 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <p><a th:href="@{/admin/catalog}">← Back to catalog</a></p>
     <h1>Menu Catalog</h1>
     <table>
         <tr><th>ID</th><th>Name</th><th>Price per guest</th><th>Action</th></tr>
