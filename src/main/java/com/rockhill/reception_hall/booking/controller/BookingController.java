@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +21,13 @@ public class BookingController {
 
     @GetMapping("/availability")
     public Map<String, Object> availability(@RequestParam LocalDate date) {
-        return Map.of("date", date, "available", service.isDateAvailable(date));
+        service.requireFutureDate(date);
+        boolean available = service.isDateAvailable(date);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("date", date);
+        result.put("available", available);
+        result.put("suggestions", available ? List.of() : service.nearestAvailableDates(date, 3));
+        return result;
     }
 
     @PostMapping("/wedding") @ResponseStatus(HttpStatus.CREATED)
@@ -86,7 +93,8 @@ public class BookingController {
 
     @PostMapping("/{id}/complete")
     public BookingResponse complete(@PathVariable Long id,
-                                    @RequestParam(defaultValue = "false") boolean venueDamaged) {
-        return BookingResponse.from(service.markCompleted(id, venueDamaged));
+                                    @RequestParam(defaultValue = "false") boolean venueDamaged,
+                                    @RequestParam(required = false) String notes) {
+        return BookingResponse.from(service.markCompleted(id, venueDamaged, notes));
     }
 }

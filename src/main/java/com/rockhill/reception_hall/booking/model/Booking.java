@@ -41,6 +41,10 @@ public abstract class Booking {
     @Column(name = "venue_damaged", nullable = false)
     private boolean venueDamaged = false;
 
+    /** Notes written when the venue is reported damaged (used for follow-up billing). */
+    @Column(name = "venue_damage_notes", length = 500)
+    private String venueDamageNotes;
+
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 
@@ -88,6 +92,8 @@ public abstract class Booking {
     public void setSubmitted(boolean s) { this.submitted = s; touch(); }
     public boolean isVenueDamaged() { return venueDamaged; }
     public void setVenueDamaged(boolean d) { this.venueDamaged = d; }
+    public String getVenueDamageNotes() { return venueDamageNotes; }
+    public void setVenueDamageNotes(String n) { this.venueDamageNotes = n; }
     public String getCancellationReason() { return cancellationReason; }
     public void setCancellationReason(String r) { this.cancellationReason = r; }
     public LocalDateTime getConfirmedAt() { return confirmedAt; }

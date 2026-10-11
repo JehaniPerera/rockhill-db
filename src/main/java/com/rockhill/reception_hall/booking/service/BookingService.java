@@ -7,6 +7,9 @@ import com.rockhill.reception_hall.booking.model.*;
 import com.rockhill.reception_hall.booking.repository.BookingRepository;
 import com.rockhill.reception_hall.booking.repository.CustomerRepository;
 import org.springframework.context.ApplicationEventPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -27,6 +31,7 @@ public class BookingService {
     private static final EnumSet<BookingStatus> DATE_BLOCKING =
             EnumSet.of(BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.COMPLETED);
     public static final int DRAFT_EXPIRY_HOURS = 24;
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
     private final BookingRepository bookings;
     private final CustomerRepository customers;
@@ -46,13 +51,35 @@ public class BookingService {
         return !bookings.existsByEventDateAndStatusIn(date, DATE_BLOCKING);
     }
 
+    /** Scenario 1, alternate 2a: the date must be a valid future date. */
+    public void requireFutureDate(LocalDate date) {
+        if (date == null || !date.isAfter(LocalDate.now()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please choose a valid future date");
+    }
+
+    /** Scenario 1, alternate 3a: the nearest open dates around a date that is taken. */
+    @Transactional(readOnly = true)
+    public List<LocalDate> nearestAvailableDates(LocalDate around, int count) {
+        List<LocalDate> result = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        for (int offset = 1; offset <= 120 && result.size() < count; offset++) {
+            LocalDate after = around.plusDays(offset);
+            if (isDateAvailable(after)) result.add(after);
+            if (result.size() >= count) break;
+            LocalDate before = around.minusDays(offset);
+            if (before.isAfter(today) && isDateAvailable(before)) result.add(before);
+        }
+        return result;
+    }
+
     // ---- Scenarios 2 & 3: create the Pending booking as a draft (Option A) ----
     public Booking createPending(BookingRequest r) {
         validateGuestCount(r.eventType(), r.guestCount());
         if (!isDateAvailable(r.eventDate()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Date is not available");
         Customer c = findOrCreateCustomer(r);
-        Booking b = factory.create(c, r.eventDate(), r.eventType(), r.guestCount(), r.selectionId());
+        Booking b = factory.create(c, r.eventDate(), r.eventType(), r.guestCount(),
+                r.selectionId(), r.eventDescription());
         try {
             return bookings.saveAndFlush(b);   // DB unique constraint on active_event_date is the final guard
         } catch (DataIntegrityViolationException ex) {
@@ -153,6 +180,8 @@ public class BookingService {
         Booking b = get(id);
         if (b.getStatus() != BookingStatus.PENDING && b.getStatus() != BookingStatus.CONFIRMED)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only Pending or Confirmed bookings can be rescheduled");
+        if (!b.getEventDate().isAfter(LocalDate.now()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "The event date has passed, so this booking cannot be rescheduled");
         if (!newDate.isAfter(LocalDate.now()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New date must be in the future");
         if (bookings.existsByEventDateAndStatusInAndIdNot(newDate, DATE_BLOCKING, id))
@@ -180,12 +209,14 @@ public class BookingService {
     }
 
     // ---- Scenario 7: Mark completed (records the venue damage status) ----
-    public Booking markCompleted(Long id, boolean venueDamaged) {
+    public Booking markCompleted(Long id, boolean venueDamaged, String damageNotes) {
         Booking b = get(id);
         guard(b, BookingStatus.COMPLETED);
         if (b.getEventDate().isAfter(LocalDate.now()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Event has not taken place yet");
         b.setVenueDamaged(venueDamaged);   // Payments uses this flag for the Rs. 20,000 deposit refund
+        b.setVenueDamageNotes(venueDamaged && damageNotes != null && !damageNotes.isBlank()
+                ? damageNotes.trim() : null);   // notes are kept for follow-up billing
         b.changeStatus(BookingStatus.COMPLETED);
         publisher.publishEvent(new BookingEvent(b, Type.COMPLETED));
         return b;
@@ -221,7 +252,12 @@ public class BookingService {
 
     /** Removes the booking's rows in Function 3's StaffAssignment table. */
     private void releaseStaff(Booking b) {
-        jdbc.update("DELETE FROM StaffAssignment WHERE booking_id = ?", b.getId());
+        try {
+            jdbc.update("DELETE FROM StaffAssignment WHERE booking_id = ?", b.getId());
+        } catch (DataAccessException ex) {
+            // Function 3's table is missing or named differently: do not block the cancellation
+            log.warn("Could not release staff for booking #{}: {}", b.getId(), ex.getMessage());
+        }
     }
 
     // ---- Scheduled clean-up: releases dates held by abandoned drafts and unpaid bookings ----
@@ -247,9 +283,14 @@ public class BookingService {
 
     /** Reads the Payment table (Function 4): is there a Deposit row for this booking? */
     protected boolean isDepositPaid(Booking b) {
-        Integer n = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND payment_type = 'Deposit'",
-                Integer.class, b.getId());
-        return n != null && n > 0;
+        try {
+            Integer n = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND payment_type = 'Deposit'",
+                    Integer.class, b.getId());
+            return n != null && n > 0;
+        } catch (DataAccessException ex) {
+            log.warn("Could not read Payment for booking #{}: {}", b.getId(), ex.getMessage());
+            return true;   // cannot check -> do not cancel the booking
+        }
     }
 }
