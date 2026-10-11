@@ -13,7 +13,8 @@
             <td th:text="${m.name}"></td>
             <td th:text="${m.pricePerGuest}"></td>
             <td>
-                <form th:action="@{/admin/menus/{id}/delete(id=${m.menuId})}" method="post">
+                <a class="btn" th:href="@{/admin/menus/{id}/edit(id=${m.menuId})}">Edit</a>
+                <form th:action="@{/admin/menus/{id}/delete(id=${m.menuId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
                 </form>
             </td>

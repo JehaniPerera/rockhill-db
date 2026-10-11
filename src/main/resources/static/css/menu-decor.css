@@ -29,3 +29,8 @@ button:disabled, .btn:disabled { background:#999; cursor:not-allowed; }
 a.card { text-decoration:none; color:inherit; }
 a.card:hover { border-color:var(--gold); }
 .card.disabled { opacity:0.6; }
+a.btn { display:inline-block; margin-right:6px; font-size:13px; }
+.btn-secondary { background:#666; }
+.edit-form label { display:block; margin-bottom:14px; font-weight:bold; }
+.edit-form label.check { font-weight:normal; }
+.edit-form input[type=text], .edit-form input[type=number], .edit-form select { display:block; width:100%; max-width:420px; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:4px; }

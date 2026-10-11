@@ -4,6 +4,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @Controller
 @RequestMapping("/admin/menus")
 public class MenuPageController {
@@ -14,22 +16,39 @@ public class MenuPageController {
         this.menuService = menuService;
     }
 
-    // Show the page: table of menus + an "add menu" form
     @GetMapping
     public String list(Model model) {
         model.addAttribute("menus", menuService.getAllMenus());
         model.addAttribute("newMenu", new Menu());
-        return "menu/list";          // = templates/menu/list.html
+        return "menu/list";
     }
 
-    // Form submits here
     @PostMapping
     public String create(@ModelAttribute Menu menu) {
         menuService.saveMenu(menu);
-        return "redirect:/admin/menus";   // reload the list
+        return "redirect:/admin/menus";
     }
 
-    // Delete button
+    @GetMapping("/{id}/edit")
+    public String editForm(@PathVariable Integer id, Model model) {
+        Optional<Menu> menu = menuService.getMenuById(id);
+        if (menu.isEmpty()) {
+            return "redirect:/admin/menus";
+        }
+        model.addAttribute("menu", menu.get());
+        return "menu/edit";
+    }
+
+    @PostMapping("/{id}/edit")
+    public String update(@PathVariable Integer id, @ModelAttribute Menu form) {
+        menuService.getMenuById(id).ifPresent(existing -> {
+            existing.setName(form.getName());
+            existing.setPricePerGuest(form.getPricePerGuest());
+            menuService.saveMenu(existing);
+        });
+        return "redirect:/admin/menus";
+    }
+
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Integer id) {
         menuService.deleteMenu(id);
