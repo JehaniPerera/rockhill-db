@@ -26,11 +26,13 @@ public class PaymentService {
         this.invoices = invoices;
     }
 
+    @Transactional
     public Payment recordDeposit(int bookingId) {
         BookingInfo booking = requireBooking(bookingId);
         if (!"Pending".equals(booking.status()) && !"Confirmed".equals(booking.status())) {
             throw new IllegalStateException("Deposit cannot be paid for a " + booking.status() + " booking");
         }
+        requireApproved(booking);
         if (payments.isWithinBalanceWindow(bookingId)) {
             throw new IllegalStateException("The event is less than 14 days away: the full amount must be paid at once");
         }
@@ -65,6 +67,7 @@ public class PaymentService {
         if (!"Pending".equals(booking.status()) && !"Confirmed".equals(booking.status())) {
             throw new IllegalStateException("Payment cannot be made for a " + booking.status() + " booking");
         }
+        requireApproved(booking);
         if (payments.countPayments(bookingId, Payment.PaymentType.DEPOSIT) > 0) {
             throw new IllegalStateException("Deposit already paid for this booking");
         }
@@ -102,6 +105,9 @@ public class PaymentService {
         if (payments.countPayments(bookingId, Payment.PaymentType.DEPOSIT) == 0) {
             throw new IllegalStateException("No deposit payment found for this booking");
         }
+        if (payments.isRefundProcessed(bookingId)) {
+            throw new IllegalStateException("The deposit outcome has already been recorded for this booking");
+        }
 
         Payment.RefundStatus result;
         String message;
@@ -120,6 +126,13 @@ public class PaymentService {
         }
         payments.updateDepositRefundStatus(bookingId, result);
         return message;
+    }
+
+    // a Pending booking can only be paid once the administrator has approved the date
+    private void requireApproved(BookingInfo booking) {
+        if ("Pending".equals(booking.status()) && !payments.isAvailabilityApproved(booking.bookingId())) {
+            throw new IllegalStateException("The administrator has not approved this date yet. Please wait for approval before paying.");
+        }
     }
 
     private BigDecimal balanceAmount(BookingInfo booking) {
