@@ -10,8 +10,5 @@ CONSTRAINT fk_availability_staff FOREIGN KEY (staff_id) REFERENCES Staff(staff_i
 CONSTRAINT uq_availability_staff_date UNIQUE (staff_id, unavailable_date)
 );
 
--- A staff member/vendor can never be on two events on the same date (also stops
--- two admins assigning the same person at the same moment).
--- The existing sample data has no clashes, so this is safe to add.
 ALTER TABLE StaffAssignment
 ADD CONSTRAINT uq_assignment_staff_date UNIQUE (staff_id, assigned_date);
