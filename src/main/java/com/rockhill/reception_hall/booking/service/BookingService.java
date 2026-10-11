@@ -41,8 +41,11 @@ public class BookingService {
 
     public BookingService(BookingRepository bookings, CustomerRepository customers, BookingFactory factory,
                           ApplicationEventPublisher publisher, JdbcTemplate jdbc) {
-        this.bookings = bookings; this.customers = customers;
-        this.factory = factory; this.publisher = publisher; this.jdbc = jdbc;
+        this.bookings = bookings;
+        this.customers = customers;
+        this.factory = factory;
+        this.publisher = publisher;
+        this.jdbc = jdbc;
     }
 
     // ---- Scenario 1: Check venue availability ----
@@ -51,13 +54,17 @@ public class BookingService {
         return !bookings.existsByEventDateAndStatusIn(date, DATE_BLOCKING);
     }
 
-    /** Scenario 1, alternate 2a: the date must be a valid future date. */
+    /**
+     * Scenario 1, alternate 2a: the date must be a valid future date.
+     */
     public void requireFutureDate(LocalDate date) {
         if (date == null || !date.isAfter(LocalDate.now()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please choose a valid future date");
     }
 
-    /** Scenario 1, alternate 3a: the nearest open dates around a date that is taken. */
+    /**
+     * Scenario 1, alternate 3a: the nearest open dates around a date that is taken.
+     */
     @Transactional(readOnly = true)
     public List<LocalDate> nearestAvailableDates(LocalDate around, int count) {
         List<LocalDate> result = new ArrayList<>();
@@ -128,8 +135,11 @@ public class BookingService {
     }
 
     private void flushOrBadRequest(String message) {
-        try { bookings.flush(); }
-        catch (DataIntegrityViolationException ex) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
+        try {
+            bookings.flush();
+        } catch (DataIntegrityViolationException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        }
     }
 
     private Booking editableBooking(Long id) {
@@ -229,14 +239,18 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
     }
 
-    /** Admin list: Pending shows only submitted bookings (drafts are hidden). */
+    /**
+     * Admin list: Pending shows only submitted bookings (drafts are hidden).
+     */
     @Transactional(readOnly = true)
     public List<Booking> byStatus(BookingStatus s) {
         return s == BookingStatus.PENDING ? bookings.findByStatusAndSubmittedTrue(s) : bookings.findByStatus(s);
     }
 
     @Transactional(readOnly = true)
-    public List<Booking> byCustomer(Long customerId) { return bookings.findByCustomerId(customerId); }
+    public List<Booking> byCustomer(Long customerId) {
+        return bookings.findByCustomerId(customerId);
+    }
 
     @Transactional(readOnly = true)
     public List<Booking> byPhone(String phone) {
@@ -250,7 +264,9 @@ public class BookingService {
                     "Cannot change booking from " + b.getStatus() + " to " + target);
     }
 
-    /** Removes the booking's rows in Function 3's StaffAssignment table. */
+    /**
+     * Removes the booking's rows in Function 3's StaffAssignment table.
+     */
     private void releaseStaff(Booking b) {
         try {
             jdbc.update("DELETE FROM StaffAssignment WHERE booking_id = ?", b.getId());
@@ -281,7 +297,9 @@ public class BookingService {
         }
     }
 
-    /** Reads the Payment table (Function 4): is there a Deposit row for this booking? */
+    /**
+     * Reads the Payment table (Function 4): is there a Deposit row for this booking?
+     */
     protected boolean isDepositPaid(Booking b) {
         try {
             Integer n = jdbc.queryForObject(
