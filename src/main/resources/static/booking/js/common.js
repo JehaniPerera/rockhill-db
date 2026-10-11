@@ -50,7 +50,6 @@ function actionButton(label, onClick, cls) {
     return b;
 }
 // Reschedule helper (scenario 5): asks for a date, checks availability, asks for confirmation.
-// Returns the new date string, or null if the user stops. Errors are thrown to the caller.
 async function askNewDate() {
     const d = prompt('New event date (YYYY-MM-DD):');
     if (!d) return null;
@@ -61,6 +60,24 @@ async function askNewDate() {
         throw new Error('Date not available.' + (s ? ' Nearest open dates: ' + s : ''));
     }
     return confirm(d.trim() + ' is available. Change the booking to this date?') ? d.trim() : null;
+}
+// Checks every required booking field. Returns an error message, or null if all is fine.
+function validateBooking(b, isWedding) {
+    if (!b.customerName) return 'Please enter your name.';
+    if (!/^(\d{10}|\+\d{9,14})$/.test(b.customerPhone))
+        return 'Phone number must be 10 digits (like 0771234567) or start with + followed by the country code and number (like +94771234567).';
+    if (!b.customerEmail) return 'Please enter your email.';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.customerEmail))
+        return 'Please enter a valid email address that contains @ (like name@example.com).';
+    if (!isWedding && !b.eventDescription) return 'Please choose the type of event.';
+    if (!b.eventDate) return 'Please pick the event date.';
+    if (!b.guestCount || b.guestCount < 1) return 'Please enter the number of guests.';
+    if (isWedding && (b.guestCount < 100 || b.guestCount > 300))
+        return 'Wedding guest count must be between 100 and 300. Please correct it or contact the administrator.';
+    if (!b.selectionId)
+        return isWedding ? 'Please choose a package. A package is required for weddings.'
+            : 'Please choose a menu: click one of the menus in "Choose a menu".';
+    return null;
 }
 function tomorrow() {
     const d = new Date(); d.setDate(d.getDate() + 1);

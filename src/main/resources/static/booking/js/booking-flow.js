@@ -149,11 +149,8 @@ function initBookingPage(type) {
             selectionId: selectionId
         };
         if (!isWedding && $('eventDescription')) body.eventDescription = $('eventDescription').value;
-        if (!body.customerName || !body.customerPhone || !body.customerEmail) { showMsg('msg', 'Please fill in your name, phone and email.'); return; }
-        if (!body.eventDate) { showMsg('msg', 'Please pick an event date.'); return; }
-        if (!body.guestCount || body.guestCount < 1) { showMsg('msg', 'Please enter the number of guests.'); return; }
-        if (isWedding && (body.guestCount < 100 || body.guestCount > 300)) { showMsg('msg', 'Wedding guest count must be between 100 and 300. Please correct it or contact the administrator.'); return; }
-        if (!selectionId) { showMsg('msg', isWedding ? 'Please choose a package. A package is required for weddings.' : 'Please choose a menu. A menu is required for events.'); return; }
+        const problem = validateBooking(body, isWedding);
+        if (problem) { showMsg('msg', problem); return; }
         try {
             booking = await api(isWedding ? '/api/bookings/wedding' : '/api/bookings/event', { method: 'POST', body: JSON.stringify(body) });
             ['customerName', 'customerPhone', 'customerEmail', 'eventDate', 'guestCount', 'eventDescription'].forEach(id => { if ($(id)) $(id).disabled = true; });
