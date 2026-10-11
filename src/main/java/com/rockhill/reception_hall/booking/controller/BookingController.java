@@ -17,7 +17,10 @@ import java.util.Map;
 @RequestMapping("/api/bookings")
 public class BookingController {
     private final BookingService service;
-    public BookingController(BookingService service) { this.service = service; }
+
+    public BookingController(BookingService service) {
+        this.service = service;
+    }
 
     @GetMapping("/availability")
     public Map<String, Object> availability(@RequestParam LocalDate date) {
@@ -30,14 +33,16 @@ public class BookingController {
         return result;
     }
 
-    @PostMapping("/wedding") @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/wedding")
+    @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse createWedding(@Valid @RequestBody BookingRequest r) {
         if (r.eventType() != EventType.WEDDING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This endpoint is for wedding bookings");
         return BookingResponse.from(service.createPending(r));
     }
 
-    @PostMapping("/event") @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/event")
+    @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse createEvent(@Valid @RequestBody BookingRequest r) {
         if (r.eventType() == EventType.WEDDING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use the wedding booking page for weddings");
@@ -50,7 +55,9 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
-    public BookingResponse get(@PathVariable Long id) { return BookingResponse.from(service.get(id)); }
+    public BookingResponse get(@PathVariable Long id) {
+        return BookingResponse.from(service.get(id));
+    }
 
     @GetMapping
     public List<BookingResponse> list(@RequestParam(required = false) BookingStatus status,
@@ -64,16 +71,21 @@ public class BookingController {
     public BookingResponse pkg(@PathVariable Long id, @PathVariable Long packageId) {
         return BookingResponse.from(service.attachPackage(id, packageId));
     }
+
     @PutMapping("/{id}/menu/{menuId}")
     public BookingResponse menu(@PathVariable Long id, @PathVariable Long menuId) {
         return BookingResponse.from(service.attachMenu(id, menuId));
     }
 
     @PostMapping("/{id}/submit")
-    public BookingResponse submit(@PathVariable Long id) { return BookingResponse.from(service.submit(id)); }
+    public BookingResponse submit(@PathVariable Long id) {
+        return BookingResponse.from(service.submit(id));
+    }
 
     @PostMapping("/{id}/confirm")
-    public BookingResponse confirm(@PathVariable Long id) { return BookingResponse.from(service.confirm(id)); }
+    public BookingResponse confirm(@PathVariable Long id) {
+        return BookingResponse.from(service.confirm(id));
+    }
 
     @PostMapping("/{id}/reject")
     public BookingResponse reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
