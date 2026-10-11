@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Manage Decor')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <p><a th:href="@{/admin/catalog}">← Back to catalog</a></p>
+    <h1>Decor Catalog</h1>
+    <table>
+        <tr>
+            <th>ID</th><th>Category</th><th>Name</th><th>Price</th>
+            <th>One per category</th><th>Action</th>
+        </tr>
+        <tr th:each="d : ${options}">
+            <td th:text="${d.decorId}"></td>
+            <td th:text="${d.category}"></td>
+            <td th:text="${d.name}"></td>
+            <td th:text="${d.price}"></td>
+            <td th:text="${d.isSingular} ? 'Yes' : 'No'"></td>
+            <td>
+                <form th:action="@{/admin/decor/{id}/delete(id=${d.decorId})}" method="post">
+                    <button type="submit" class="btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Add a decor option</h2>
+    <form class="form-row" th:action="@{/admin/decor}" th:object="${newDecor}" method="post">
+        <input type="text" th:field="*{category}" list="category-list" placeholder="Category" required>
+        <datalist id="category-list">
+            <option th:each="c : ${categories}" th:value="${c}"></option>
+        </datalist>
+        <input type="text" th:field="*{name}" placeholder="Decor name" required>
+        <input type="number" step="0.01" th:field="*{price}" placeholder="Price" required>
+        <label><input type="checkbox" th:field="*{isSingular}"> One per category</label>
+        <button type="submit">Add Decor</button>
+    </form>
+</main>
+</body>
+</html>
