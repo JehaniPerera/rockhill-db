@@ -93,6 +93,9 @@ public class PaymentRepository {
                         "DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
                         "DATE_FORMAT(GREATEST(DATE_SUB(b.event_date, INTERVAL 14 DAY), CURDATE()), '%Y-%m-%d') AS balance_due_date, " +
                         "(DATEDIFF(b.event_date, CURDATE()) < 14) AS late_booking, " +
+                        "DATE_FORMAT(DATE_SUB(b.event_date, INTERVAL 14 DAY), '%Y-%m-%d') AS due_date, " +
+                        "(b.status = 'Confirmed' AND CURDATE() > DATE_SUB(b.event_date, INTERVAL 14 DAY) " +
+                        "AND NOT EXISTS (SELECT 1 FROM Payment x WHERE x.booking_id = b.booking_id AND x.payment_type = 'Balance')) AS is_overdue, " +
                         "b.guest_count, b.status, b.total_price, b.venue_damaged, b.availability_approved, " +
                         "(SELECT p.refund_status FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Deposit') AS deposit_refund_status, " +
                         "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Deposit') AS deposit_paid, " +
@@ -115,18 +118,10 @@ public class PaymentRepository {
         return rows.stream().findFirst();
     }
 
-    public List<Map<String, Object>> findHistory(int bookingId) {
-        return jdbc.queryForList(
-                "SELECT payment_id, booking_id, amount, payment_type, " +
-                        "DATE_FORMAT(payment_date, '%Y-%m-%d') AS payment_date, " +
-                        "payment_status, refund_status " +
-                        "FROM Payment WHERE booking_id = ? ORDER BY payment_id", bookingId);
-    }
-
-    public List<Map<String, Object>> findAll() {
-        return jdbc.queryForList(
-                "SELECT payment_id, booking_id, amount, payment_type, " +
-                        "DATE_FORMAT(payment_date, '%Y-%m-%d') AS payment_date, " +
-                        "payment_status, refund_status FROM Payment ORDER BY payment_id");
-    }
-}
+    // one payment with its customer and booking details, for the receipt page
+    public Optional<Map<String, Object>> findReceipt(int paymentId) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT p.payment_id, CONCAT('RCPT-', LPAD(p.payment_id, 5, '0')) AS receipt_no, " +
+                        "p.booking_id, p.amount, p.payment_type, p.payment_status, " +
+                        "DATE_FORMAT(p.payment_date, '%Y-%m-%d') AS payment_date, " +
+                        "b.event_type, DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
