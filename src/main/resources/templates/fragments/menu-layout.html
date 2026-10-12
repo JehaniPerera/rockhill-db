@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${title} + ' | Rockhill Reception Hall'">Rockhill</title>
     <link rel="stylesheet" th:href="@{/css/menu-decor.css}">
+    <script th:src="@{/js/menu-decor-nav.js}" defer></script>
 </head>
 <body>
 <header th:fragment="nav" class="site-header">
     <a class="brand" th:href="@{/menus}">Rockhill Reception Hall</a>
     <nav>
-        <a th:href="@{/menus}">Menus</a>
-        <a th:href="@{/packages}">Packages</a>
+        <a id="nav-menus" th:href="@{/menus}">Menus</a>
+        <a id="nav-packages" th:href="@{/packages}">Packages</a>
         <a th:href="@{/admin/catalog}">Admin</a>
     </nav>
 </header>

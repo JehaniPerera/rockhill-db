@@ -13,9 +13,8 @@
             <!-- RESERVED: dishes section goes here later. Not built yet. -->
             <div class="card-dishes"></div>
 
-            <!-- PENDING: selecting a menu needs the booking code from Function 1 -->
-            <button type="button" class="btn-select" disabled>Select this menu</button>
-            <p class="pending-note">Selection available once booking is connected.</p>
+            <button type="button" class="btn-select" data-kind="menu" th:attr="data-id=${m.menuId}" disabled>Select this menu</button>
+            <p class="pending-note">Open this page from your booking to select.</p>
         </div>
     </div>
 </main>

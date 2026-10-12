@@ -23,9 +23,8 @@
             <!-- RESERVED: dishes section can be added here later. Not built yet. -->
             <div class="card-dishes"></div>
 
-            <!-- PENDING: selecting a package needs the booking code from Function 1 -->
-            <button type="button" class="btn-select" disabled>Select this package</button>
-            <p class="pending-note">Selection available once booking is connected.</p>
+            <button type="button" class="btn-select" data-kind="package" th:attr="data-id=${p.packageId}" disabled>Select this package</button>
+            <p class="pending-note">Open this page from your booking to select.</p>
         </div>
     </div>
 </main>
