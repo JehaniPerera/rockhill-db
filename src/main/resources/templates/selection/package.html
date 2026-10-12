@@ -5,7 +5,6 @@
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container" id="choice-page" data-kind="package" th:attr="data-booking-id=${bookingId}">
     <h1>Choose Your Wedding Package</h1>
-    <p><a th:href="@{/booking/{id}/select/addons(id=${bookingId})}">Next: Add-ons →</a></p>
     <p id="booking-info">Loading your booking...</p>
     <div id="msg"></div>
     <p id="choice-note"></p>
