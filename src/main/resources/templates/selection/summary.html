@@ -5,10 +5,6 @@
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container" id="summary-page" th:attr="data-booking-id=${bookingId}">
     <h1>Booking Summary</h1>
-    <p>
-        <a th:href="@{/booking/{id}/select/addons(id=${bookingId})}">← Add-ons</a> |
-        <a th:href="@{/booking/{id}/select/decor(id=${bookingId})}">← Decor</a>
-    </p>
     <div id="msg"></div>
 
     <h2>Your event</h2>
