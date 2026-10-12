@@ -10,6 +10,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/booking/{bookingId}")
 public class BookingSelectionPageController {
 
+    @GetMapping("/select/package")
+    public String pkg(@PathVariable Long bookingId, Model model) {
+        model.addAttribute("bookingId", bookingId);
+        return "selection/package";
+    }
+
+    @GetMapping("/select/menu")
+    public String menu(@PathVariable Long bookingId, Model model) {
+        model.addAttribute("bookingId", bookingId);
+        return "selection/menu";
+    }
+
     @GetMapping("/select/addons")
     public String addons(@PathVariable Long bookingId, Model model) {
         model.addAttribute("bookingId", bookingId);

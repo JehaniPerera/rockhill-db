@@ -360,6 +360,124 @@ async function initSummaryPage(bookingId) {
     try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
 }
 
+async function initChoicePage(bookingId, kind) {
+    const isPackage = kind === 'package';
+    const base = '/api/bookings/' + bookingId;
+    const cards = document.getElementById('choice-cards');
+    let booking, items;
+    let tiers = {};
+    let editable = true;
+
+    async function loadAll() {
+        booking = await MDSel.api(base);
+        editable = booking.status === 'PENDING' && !booking.submitted;
+        const wedding = booking.eventType === 'WEDDING';
+        document.getElementById('booking-info').textContent =
+            'Booking #' + booking.id + ' - ' + booking.eventType + ' - ' + booking.guestCount + ' guests' +
+            (editable ? '' : ' (this booking can no longer be edited)');
+
+        // Packages are for weddings only, menus for other events only.
+        if (wedding !== isPackage) {
+            cards.innerHTML = '';
+            const p = MDSel.el('p', isPackage
+                ? 'Packages are for weddings. This booking is not a wedding, so please choose a menu: '
+                : 'Menus are for events that are not weddings. This booking is a wedding, so please choose a package: ');
+            const a = MDSel.el('a', 'Go to the ' + (isPackage ? 'menu' : 'package') + ' page');
+            a.href = '/booking/' + bookingId + '/select/' + (isPackage ? 'menu' : 'package');
+            p.appendChild(a);
+            cards.appendChild(p);
+            return;
+        }
+
+        items = await MDSel.api(isPackage ? '/api/packages' : '/api/menus');
+        tiers = {};
+        if (isPackage) {
+            await Promise.all(items.map(async p => {
+                tiers[p.packageId] = await MDSel.api('/api/package-pricing-tiers/package/' + p.packageId);
+            }));
+        }
+
+        const chosenId = isPackage ? booking.packageId : booking.menuId;
+        let note = '';
+        if (chosenId && !items.some(i => (isPackage ? i.packageId : i.menuId) === chosenId)) {
+            try {
+                const old = await MDSel.api((isPackage ? '/api/packages/' : '/api/menus/') + chosenId);
+                note = 'Your current ' + kind + ' (' + old.name + ') is no longer available. Please choose another.';
+            } catch (e) {
+                note = 'Your current ' + kind + ' is no longer available. Please choose another.';
+            }
+        }
+        document.getElementById('choice-note').textContent = note;
+
+        try {
+            const est = await MDSel.api(base + '/selections/estimate');
+            document.getElementById('est-base').textContent = MDSel.money(est.basePrice);
+            document.getElementById('est-total').textContent = MDSel.money(est.total);
+            const row = document.getElementById('est-surcharge-row');
+            row.style.display = est.lowGuestSurcharge > 0 ? 'block' : 'none';
+            document.getElementById('est-surcharge').textContent = MDSel.money(est.lowGuestSurcharge);
+        } catch (e) {
+            document.getElementById('est-base').textContent = '-';
+            document.getElementById('est-total').textContent = '-';
+        }
+
+        render(chosenId);
+    }
+
+    async function act(fn, okText) {
+        try {
+            await fn();
+            MDSel.message(okText, 'success');
+        } catch (e) {
+            MDSel.message(e.message, 'error');
+            if (e.status === 409) { editable = false; }
+        }
+        try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
+    }
+
+    function render(chosenId) {
+        cards.innerHTML = '';
+        items.forEach(item => {
+            const id = isPackage ? item.packageId : item.menuId;
+            const isChosen = chosenId === id;
+            const card = MDSel.el('div', undefined, 'card' + (isChosen ? ' chosen' : ''));
+            card.appendChild(MDSel.el('h3', item.name));
+
+            let hasPrice = true;
+            if (isPackage) {
+                card.appendChild(MDSel.el('p', item.description || ''));
+                const tier = (tiers[id] || []).find(t =>
+                    booking.guestCount >= t.minGuests && booking.guestCount <= t.maxGuests);
+                if (tier) {
+                    card.appendChild(MDSel.el('p', MDSel.money(tier.totalPrice), 'price'));
+                    card.appendChild(MDSel.el('div',
+                        'For ' + tier.minGuests + ' - ' + tier.maxGuests + ' guests', 'pending-note'));
+                } else {
+                    hasPrice = false;
+                    card.appendChild(MDSel.el('div',
+                        'No price bracket for ' + booking.guestCount + ' guests', 'pending-note'));
+                }
+            } else {
+                card.appendChild(MDSel.el('p', MDSel.money(item.pricePerGuest) + ' per guest', 'price'));
+            }
+
+            // RESERVED: dishes section goes here later. Not built yet.
+            card.appendChild(MDSel.el('div', undefined, 'card-dishes'));
+
+            const btn = MDSel.el('button', isChosen ? 'Chosen' : 'Choose this ' + kind, 'btn-select');
+            btn.type = 'button';
+            btn.disabled = !editable || isChosen || !hasPrice;
+            btn.addEventListener('click', () => {
+                act(() => MDSel.api(base + '/' + kind + '/' + id, { method: 'PUT' }), item.name + ' chosen.');
+            });
+            card.appendChild(btn);
+            cards.appendChild(card);
+        });
+    }
+
+    try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const addonsPage = document.getElementById('addons-page');
     if (addonsPage) initAddOnsPage(addonsPage.dataset.bookingId);
@@ -369,4 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const summaryPage = document.getElementById('summary-page');
     if (summaryPage) initSummaryPage(summaryPage.dataset.bookingId);
+
+    const choicePage = document.getElementById('choice-page');
+    if (choicePage) initChoicePage(choicePage.dataset.bookingId, choicePage.dataset.kind);
 });

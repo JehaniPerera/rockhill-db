@@ -49,3 +49,4 @@ a.btn { display:inline-block; margin-right:6px; font-size:13px; }
 .choice-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px; border-bottom:1px solid var(--line); }
 .choice-row label { flex:1; }
 .detail-line { padding:3px 0; }
+.card.chosen { border-color:var(--gold); box-shadow:0 0 0 2px var(--gold); }
