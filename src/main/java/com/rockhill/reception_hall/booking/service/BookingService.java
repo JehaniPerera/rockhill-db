@@ -235,6 +235,7 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "New date is not available");
         boolean wasConfirmed = b.getStatus() == BookingStatus.CONFIRMED;
         b.setEventDate(newDate);   // the balance due date is calculated from the event date
+        syncStaffDate(b);          // StaffAssignment.assigned_date must always equal the event date
         if (byCustomer && (wasConfirmed || b.getConfirmedAt() != null)) {
             // A customer date change needs the admin to accept the new date again.
             if (wasConfirmed) b.changeStatus(BookingStatus.PENDING);   // deposit stays recorded as received
@@ -297,6 +298,15 @@ public class BookingService {
         if (!b.getStatus().canMoveTo(target))
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Cannot change booking from " + b.getStatus() + " to " + target);
+    }
+
+    /** Keeps Function 3's StaffAssignment.assigned_date equal to the booking's (new) event date. */
+    private void syncStaffDate(Booking b) {
+        try {
+            jdbc.update("UPDATE StaffAssignment SET assigned_date = ? WHERE booking_id = ?", b.getEventDate(), b.getId());
+        } catch (DataAccessException ex) {
+            log.warn("Could not update staff assignment date for booking #{}: {}", b.getId(), ex.getMessage());
+        }
     }
 
     /** Removes the booking's rows in Function 3's StaffAssignment table. */
