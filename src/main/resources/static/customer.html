@@ -64,7 +64,7 @@
         <h2>My payment history</h2>
         <div class="wrap">
             <table>
-                <thead><tr><th>Type</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+                <thead><tr><th>Receipt</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
                 <tbody id="history"></tbody>
             </table>
         </div>
@@ -75,7 +75,7 @@
     const DEPOSIT = 20000; // separate refundable deposit (same value as the server)
     const $ = id => document.getElementById(id);
     const rs = n => 'Rs. ' + Number(n).toLocaleString();
-    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let bookings = [];
 
     function say(text, cls) { const m = $('msg'); m.textContent = text; m.className = cls || ''; }
@@ -113,6 +113,7 @@
     function paymentState(b) {
         if (b.status === 'Cancelled') return ['Cancelled', 'b-red'];
         if (Number(b.balance_paid) > 0) return ['Fully Paid', 'b-green'];
+        if (Number(b.is_overdue) === 1) return ['Overdue', 'b-red'];
         if (Number(b.deposit_paid) > 0) return ['Deposit paid - balance pending', 'b-amber'];
         return ['Not paid yet', 'b-grey'];
     }
@@ -134,6 +135,7 @@
         const balancePaid = Number(b.balance_paid) > 0;
         const cancelled = b.status === 'Cancelled';
         const late = Number(b.late_booking) === 1;   // event is less than 14 days away
+        const overdue = Number(b.is_overdue) === 1;
         const open = b.status === 'Pending' || b.status === 'Confirmed';
         const approved = Boolean(Number(b.availability_approved)) || b.status === 'Confirmed';
         const canDeposit = !depositPaid && !late && open && approved;
@@ -155,12 +157,14 @@
         else if (!approved && !depositPaid && open) hint = 'Waiting for the administrator to approve your date. You can pay after approval.';
         else if (canFull) hint = 'Your event is less than 14 days away, so the deposit and the full balance must be paid at once.';
         else if (!depositPaid) hint = 'Pay the deposit first to confirm your booking.';
+        else if (overdue) hint = 'Your balance was due on ' + b.due_date + '. Please pay it as soon as possible.';
         else hint = 'Deposit received. Pay the balance before ' + b.balance_due_date + '.';
         $('hint').textContent = hint;
 
         const [label, cls] = paymentState(b);
         const remaining = cancelled ? '-' : (balancePaid ? rs(0) : rs(b.total_price));
-        const dueText = late ? 'Immediately (event is less than 14 days away)' : b.balance_due_date;
+        const dueText = overdue ? 'Overdue - was due ' + b.due_date
+            : (late ? 'Immediately (event is less than 14 days away)' : b.balance_due_date);
         const dueRow = (cancelled || balancePaid) ? '' : `<dt>Balance due by</dt><dd>${dueText}</dd>`;
 
         $('details').className = '';
@@ -181,11 +185,12 @@
             const rows = await call('/api/payments/history/' + id);
             if (!Array.isArray(rows)) throw new Error('Unexpected reply');
             body.innerHTML = rows.length ? rows.map(p => `<tr>
+        <td><a href="receipt.html?payment=${p.payment_id}" target="_blank">${esc(p.receipt_no)}</a></td>
         <td>${esc(p.payment_type)}</td><td>${rs(p.amount)}</td>
         <td>${p.payment_date}</td><td>${esc(p.payment_status)}</td></tr>`).join('')
-                : '<tr><td colspan="4" class="empty">No payments yet. Pay the deposit to confirm your booking.</td></tr>';
+                : '<tr><td colspan="5" class="empty">No payments yet. Pay the deposit to confirm your booking.</td></tr>';
         } catch (e) {
-            body.innerHTML = `<tr><td colspan="4" class="err">Could not load history: ${esc(e.message)}</td></tr>`;
+            body.innerHTML = `<tr><td colspan="5" class="err">Could not load history: ${esc(e.message)}</td></tr>`;
         }
     }
 
