@@ -45,3 +45,7 @@ a.btn { display:inline-block; margin-right:6px; font-size:13px; }
 .sel-error, .sel-success { padding:10px 14px; border-radius:4px; margin:12px 0; }
 .sel-error { background:#fbeaea; border:1px solid #e0b4b4; color:#8a1f1f; }
 .sel-success { background:#eef6ec; border:1px solid #c5dcc0; color:#2f5d2a; }
+.choice-group { margin-bottom:24px; }
+.choice-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px; border-bottom:1px solid var(--line); }
+.choice-row label { flex:1; }
+.detail-line { padding:3px 0; }

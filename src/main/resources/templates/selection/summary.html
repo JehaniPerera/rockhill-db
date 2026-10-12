@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Booking Summary')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container" id="summary-page" th:attr="data-booking-id=${bookingId}">
+    <h1>Booking Summary</h1>
+    <p>
+        <a th:href="@{/booking/{id}/select/addons(id=${bookingId})}">← Add-ons</a> |
+        <a th:href="@{/booking/{id}/select/decor(id=${bookingId})}">← Decor</a>
+    </p>
+    <div id="msg"></div>
+
+    <h2>Your event</h2>
+    <div id="sum-details" class="summary-box">Loading...</div>
+
+    <h2>Add-ons</h2>
+    <table>
+        <thead><tr><th>Add-on</th><th>Quantity</th><th>Charged per unit</th><th>Line total</th></tr></thead>
+        <tbody id="sum-addons"></tbody>
+    </table>
+
+    <h2>Decor</h2>
+    <table>
+        <thead><tr><th>Decor</th><th>Quantity</th><th>Charged per unit</th><th>Line total</th></tr></thead>
+        <tbody id="sum-decor"></tbody>
+    </table>
+
+    <h2>Price estimate</h2>
+    <table>
+        <tbody id="sum-estimate"></tbody>
+    </table>
+
+    <button id="submit-btn" type="button" disabled>Submit booking request</button>
+    <p class="pending-note">After you submit, this booking can no longer be changed.</p>
+</main>
+<script th:src="@{/js/menu-decor-selection.js}"></script>
+</body>
+</html>

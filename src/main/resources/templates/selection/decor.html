@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Choose Decor')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container" id="decor-page" th:attr="data-booking-id=${bookingId}">
+    <h1>Choose Decor</h1>
+    <p>
+        <a th:href="@{/booking/{id}/select/addons(id=${bookingId})}">← Add-ons</a> |
+        <a th:href="@{/booking/{id}/summary(id=${bookingId})}">Summary →</a>
+    </p>
+    <p id="booking-info">Loading your booking...</p>
+    <div id="msg"></div>
+
+    <div id="decor-groups"></div>
+
+    <div class="summary-box">
+        <div>Decor total: <strong id="est-decor">-</strong></div>
+        <div>Estimated total: <strong id="est-total">-</strong></div>
+    </div>
+</main>
+<script th:src="@{/js/menu-decor-selection.js}"></script>
+</body>
+</html>

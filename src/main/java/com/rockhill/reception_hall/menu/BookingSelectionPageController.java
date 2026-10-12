@@ -15,4 +15,16 @@ public class BookingSelectionPageController {
         model.addAttribute("bookingId", bookingId);
         return "selection/addons";
     }
+
+    @GetMapping("/select/decor")
+    public String decor(@PathVariable Long bookingId, Model model) {
+        model.addAttribute("bookingId", bookingId);
+        return "selection/decor";
+    }
+
+    @GetMapping("/summary")
+    public String summary(@PathVariable Long bookingId, Model model) {
+        model.addAttribute("bookingId", bookingId);
+        return "selection/summary";
+    }
 }

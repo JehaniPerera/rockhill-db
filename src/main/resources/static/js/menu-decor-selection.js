@@ -43,8 +43,7 @@ async function initAddOnsPage(bookingId) {
 
     async function loadAll() {
         booking = await MDSel.api(base);
-        editable = booking.status === 'PENDING';
-        addons = await MDSel.api('/api/addons?eventType=' + encodeURIComponent(booking.eventType));
+        editable = booking.status === 'PENDING' && !booking.submitted;        addons = await MDSel.api('/api/addons?eventType=' + encodeURIComponent(booking.eventType));
         selected = await MDSel.api(base + '/selections/addons');
         const est = await MDSel.api(base + '/selections/estimate');
         document.getElementById('est-addons').textContent = MDSel.money(est.addOnTotal);
@@ -148,7 +147,226 @@ async function initAddOnsPage(bookingId) {
     try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
 }
 
+async function initDecorPage(bookingId) {
+    const base = '/api/bookings/' + bookingId;
+    const groups = document.getElementById('decor-groups');
+    let booking, options, selected;
+    let editable = true;
+
+    async function loadAll() {
+        booking = await MDSel.api(base);
+        editable = booking.status === 'PENDING' && !booking.submitted;
+        options = await MDSel.api('/api/decor-options');
+        selected = await MDSel.api(base + '/selections/decor');
+        const est = await MDSel.api(base + '/selections/estimate');
+        document.getElementById('est-decor').textContent = MDSel.money(est.decorTotal);
+        document.getElementById('est-total').textContent = MDSel.money(est.total);
+        document.getElementById('booking-info').textContent =
+            'Booking #' + booking.id + ' - ' + booking.eventType + ' - ' + booking.guestCount + ' guests' +
+            (editable ? '' : ' (this booking can no longer be edited)');
+        render();
+    }
+
+    async function act(fn, okText) {
+        try {
+            await fn();
+            MDSel.message(okText, 'success');
+        } catch (e) {
+            MDSel.message(e.message, 'error');
+            if (e.status === 409) { editable = false; }
+        }
+        try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
+    }
+
+    function removeButton(decorId, name) {
+        const btn = MDSel.el('button', 'Remove', 'btn-danger');
+        btn.type = 'button';
+        btn.disabled = !editable;
+        btn.addEventListener('click', () => {
+            act(() => MDSel.api(base + '/selections/decor/' + decorId, { method: 'DELETE' }), name + ' removed.');
+        });
+        return btn;
+    }
+
+    function render() {
+        groups.innerHTML = '';
+        const wedding = booking.eventType === 'WEDDING';
+        const categories = [];
+        options.forEach(o => { if (!categories.includes(o.category)) categories.push(o.category); });
+
+        categories.forEach(cat => {
+            const items = options.filter(o => o.category === cat);
+            const singular = items.some(o => o.isSingular);
+            const group = MDSel.el('div', undefined, 'choice-group');
+            group.appendChild(MDSel.el('h3', cat));
+            if (singular) group.appendChild(MDSel.el('div', 'Choose one', 'pending-note'));
+
+            items.forEach(o => {
+                const line = selected.find(s => s.itemId === o.decorId);
+                const row = MDSel.el('div', undefined, 'choice-row');
+
+                const label = document.createElement('label');
+                const input = document.createElement('input');
+                input.type = singular ? 'radio' : 'checkbox';
+                input.name = 'decor-' + cat;
+                input.checked = !!line;
+                input.disabled = !editable;
+                input.addEventListener('change', () => {
+                    if (input.checked) {
+                        act(() => MDSel.api(base + '/selections/decor/' + o.decorId, { method: 'POST' }), o.name + ' chosen.');
+                    } else {
+                        act(() => MDSel.api(base + '/selections/decor/' + o.decorId, { method: 'DELETE' }), o.name + ' removed.');
+                    }
+                });
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(' ' + o.name));
+                row.appendChild(label);
+
+                row.appendChild(MDSel.el('span', wedding ? 'Included' : MDSel.money(o.price)));
+                row.appendChild(MDSel.el('span',
+                    line ? 'Quantity ' + line.quantity + ' - ' + MDSel.money(line.lineTotal) : ''));
+                group.appendChild(row);
+            });
+
+            const chosen = items.map(o => selected.find(s => s.itemId === o.decorId)).find(Boolean);
+            if (singular && chosen) {
+                const clear = MDSel.el('button', 'Clear choice', 'btn-secondary');
+                clear.type = 'button';
+                clear.disabled = !editable;
+                clear.addEventListener('click', () => {
+                    act(() => MDSel.api(base + '/selections/decor/' + chosen.itemId, { method: 'DELETE' }),
+                        chosen.name + ' removed.');
+                });
+                group.appendChild(clear);
+            }
+            groups.appendChild(group);
+        });
+
+        // Chosen decor that was disabled later: not in the catalog list, but still on the booking.
+        const orphans = selected.filter(s => !options.some(o => o.decorId === s.itemId));
+        if (orphans.length > 0) {
+            const group = MDSel.el('div', undefined, 'choice-group');
+            group.appendChild(MDSel.el('h3', 'No longer available'));
+            orphans.forEach(s => {
+                const row = MDSel.el('div', undefined, 'choice-row');
+                row.appendChild(MDSel.el('span', s.name));
+                row.appendChild(MDSel.el('span', 'Quantity ' + s.quantity + ' - ' + MDSel.money(s.lineTotal)));
+                row.appendChild(removeButton(s.itemId, s.name));
+                group.appendChild(row);
+            });
+            groups.appendChild(group);
+        }
+    }
+
+    try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
+}
+
+async function initSummaryPage(bookingId) {
+    const base = '/api/bookings/' + bookingId;
+
+    function fillLines(tbodyId, lines) {
+        const tbody = document.getElementById(tbodyId);
+        tbody.innerHTML = '';
+        if (lines.length === 0) {
+            const tr = document.createElement('tr');
+            const td = MDSel.el('td', 'Nothing chosen');
+            td.colSpan = 4;
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+        lines.forEach(l => {
+            const tr = document.createElement('tr');
+            tr.appendChild(MDSel.el('td', l.name));
+            tr.appendChild(MDSel.el('td', String(l.quantity)));
+            tr.appendChild(MDSel.el('td', MDSel.money(l.chargedAmount)));
+            tr.appendChild(MDSel.el('td', MDSel.money(l.lineTotal)));
+            tbody.appendChild(tr);
+        });
+    }
+
+    function addEstimateRow(tbody, label, value, bold) {
+        const tr = document.createElement('tr');
+        tr.appendChild(MDSel.el('td', label, bold ? 'price' : undefined));
+        tr.appendChild(MDSel.el('td', MDSel.money(value), bold ? 'price' : undefined));
+        tbody.appendChild(tr);
+    }
+
+    async function loadAll() {
+        const booking = await MDSel.api(base);
+        const editable = booking.status === 'PENDING' && !booking.submitted;
+        const wedding = booking.eventType === 'WEDDING';
+
+        let choice = 'Not chosen yet';
+        const choiceId = wedding ? booking.packageId : booking.menuId;
+        if (choiceId) {
+            try {
+                const item = await MDSel.api((wedding ? '/api/packages/' : '/api/menus/') + choiceId);
+                choice = item.name;
+            } catch (e) {
+                choice = '#' + choiceId;
+            }
+        }
+
+        const addons = await MDSel.api(base + '/selections/addons');
+        const decor = await MDSel.api(base + '/selections/decor');
+        const est = await MDSel.api(base + '/selections/estimate');
+
+        const details = document.getElementById('sum-details');
+        details.innerHTML = '';
+        const lines = [
+            ['Booking', '#' + booking.id],
+            ['Customer', booking.customerName],
+            ['Event date', booking.eventDate],
+            ['Event type', booking.eventType],
+            ['Guests', booking.guestCount],
+            [wedding ? 'Package' : 'Menu', choice],
+            ['Status', booking.submitted ? 'Submitted - waiting for the hall administrator' : booking.status]
+        ];
+        lines.forEach(pair => {
+            const div = MDSel.el('div', undefined, 'detail-line');
+            div.appendChild(MDSel.el('strong', pair[0] + ': '));
+            div.appendChild(document.createTextNode(String(pair[1])));
+            details.appendChild(div);
+        });
+
+        fillLines('sum-addons', addons);
+        fillLines('sum-decor', decor);
+
+        const tbody = document.getElementById('sum-estimate');
+        tbody.innerHTML = '';
+        addEstimateRow(tbody, wedding ? 'Package price' : 'Menu price', est.basePrice, false);
+        if (est.lowGuestSurcharge > 0) {
+            addEstimateRow(tbody, 'Low guest charge', est.lowGuestSurcharge, false);
+        }
+        addEstimateRow(tbody, 'Add-ons', est.addOnTotal, false);
+        addEstimateRow(tbody, 'Decor', est.decorTotal, false);
+        addEstimateRow(tbody, 'Estimated total', est.total, true);
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = !editable;
+        btn.onclick = async () => {
+            if (!confirm('Submit this booking request? You cannot change it afterwards.')) return;
+            try {
+                await MDSel.api(base + '/submit', { method: 'POST' });
+                MDSel.message('Your booking request was submitted.', 'success');
+            } catch (e) {
+                MDSel.message(e.message, 'error');
+            }
+            try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
+        };
+    }
+
+    try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const addonsPage = document.getElementById('addons-page');
     if (addonsPage) initAddOnsPage(addonsPage.dataset.bookingId);
+
+    const decorPage = document.getElementById('decor-page');
+    if (decorPage) initDecorPage(decorPage.dataset.bookingId);
+
+    const summaryPage = document.getElementById('summary-page');
+    if (summaryPage) initSummaryPage(summaryPage.dataset.bookingId);
 });
