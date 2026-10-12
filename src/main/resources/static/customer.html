@@ -135,8 +135,9 @@
         const cancelled = b.status === 'Cancelled';
         const late = Number(b.late_booking) === 1;   // event is less than 14 days away
         const open = b.status === 'Pending' || b.status === 'Confirmed';
-        const canDeposit = !depositPaid && !late && open;
-        const canFull = !depositPaid && late && open;
+        const approved = Boolean(Number(b.availability_approved)) || b.status === 'Confirmed';
+        const canDeposit = !depositPaid && !late && open && approved;
+        const canFull = !depositPaid && late && open && approved;
         const canBalance = b.status === 'Confirmed' && depositPaid && !balancePaid;
 
         $('btnDeposit').disabled = !canDeposit;
@@ -151,6 +152,7 @@
         let hint = '';
         if (cancelled) hint = 'This booking is cancelled, so no payments can be made.';
         else if (balancePaid) hint = 'Everything is paid. Thank you!';
+        else if (!approved && !depositPaid && open) hint = 'Waiting for the administrator to approve your date. You can pay after approval.';
         else if (canFull) hint = 'Your event is less than 14 days away, so the deposit and the full balance must be paid at once.';
         else if (!depositPaid) hint = 'Pay the deposit first to confirm your booking.';
         else hint = 'Deposit received. Pay the balance before ' + b.balance_due_date + '.';
