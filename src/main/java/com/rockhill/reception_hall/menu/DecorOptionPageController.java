@@ -3,6 +3,8 @@ package com.rockhill.reception_hall.menu;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -38,8 +40,13 @@ public class DecorOptionPageController {
     }
 
     @PostMapping
-    public String create(@ModelAttribute DecorOption decorOption) {
-        decorOptionService.saveDecorOption(decorOption);
+    public String create(@ModelAttribute DecorOption decorOption, RedirectAttributes redirect) {
+        try {
+            decorOptionService.saveDecorOption(decorOption);
+            redirect.addFlashAttribute("success", "Decor option saved.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
         return "redirect:/admin/decor";
     }
 
@@ -58,20 +65,48 @@ public class DecorOptionPageController {
     }
 
     @PostMapping("/{id}/edit")
-    public String update(@PathVariable Integer id, @ModelAttribute DecorOption form) {
-        decorOptionService.getDecorOptionById(id).ifPresent(existing -> {
-            existing.setCategory(form.getCategory());
-            existing.setName(form.getName());
-            existing.setPrice(form.getPrice());
-            existing.setIsSingular(form.getIsSingular());
-            decorOptionService.saveDecorOption(existing);
-        });
-        return "redirect:/admin/decor";
+    public String update(@PathVariable Integer id, @ModelAttribute DecorOption form, RedirectAttributes redirect) {
+        form.setDecorId(id);
+        try {
+            decorOptionService.saveDecorOption(form);
+            redirect.addFlashAttribute("success", "Decor option updated.");
+            return "redirect:/admin/decor";
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+            return "redirect:/admin/decor/" + id + "/edit";
+        }
     }
 
     @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Integer id) {
-        decorOptionService.deleteDecorOption(id);
+    public String delete(@PathVariable Integer id, RedirectAttributes redirect) {
+        try {
+            decorOptionService.deleteDecorOption(id);
+            redirect.addFlashAttribute("success", "Decor option deleted.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
+        return "redirect:/admin/decor";
+    }
+
+    @PostMapping("/{id}/disable")
+    public String disable(@PathVariable Integer id, RedirectAttributes redirect) {
+        try {
+            decorOptionService.setDecorOptionActive(id, false);
+            redirect.addFlashAttribute("success", "Decor option disabled. New customers can no longer choose it.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
+        return "redirect:/admin/decor";
+    }
+
+    @PostMapping("/{id}/enable")
+    public String enable(@PathVariable Integer id, RedirectAttributes redirect) {
+        try {
+            decorOptionService.setDecorOptionActive(id, true);
+            redirect.addFlashAttribute("success", "Decor option enabled again.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
         return "redirect:/admin/decor";
     }
 }

@@ -2,7 +2,6 @@ package com.rockhill.reception_hall.menu;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -13,8 +12,8 @@ public class MenuController {
     private MenuService menuService;
 
     @GetMapping
-    public List<Menu> getAllMenus() {
-        return menuService.getAllMenus();
+    public List<Menu> getAllMenus(@RequestParam(required = false) Boolean includeInactive) {
+        return Boolean.TRUE.equals(includeInactive) ? menuService.getAllMenus() : menuService.getActiveMenus();
     }
 
     @GetMapping("/{id}")

@@ -18,6 +18,8 @@ public class AddOn {
     @Column(name = "is_wedding_exclusive")
     private Boolean isWeddingExclusive = false;
 
+    private Boolean active = true;
+
     public Integer getAddonId() { return addonId; }
     public void setAddonId(Integer addonId) { this.addonId = addonId; }
 
@@ -35,4 +37,7 @@ public class AddOn {
 
     public Boolean getIsWeddingExclusive() { return isWeddingExclusive; }
     public void setIsWeddingExclusive(Boolean isWeddingExclusive) { this.isWeddingExclusive = isWeddingExclusive; }
+
+    public Boolean getActive() { return active == null || active; }
+    public void setActive(Boolean active) { this.active = active; }
 }

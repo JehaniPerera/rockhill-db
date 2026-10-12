@@ -13,6 +13,8 @@ public class Menu {
     private String name;
     private Double pricePerGuest;
 
+    private Boolean active = true;
+
     public Integer getMenuId() { return menuId; }
     public void setMenuId(Integer menuId) { this.menuId = menuId; }
 
@@ -21,4 +23,7 @@ public class Menu {
 
     public Double getPricePerGuest() { return pricePerGuest; }
     public void setPricePerGuest(Double pricePerGuest) { this.pricePerGuest = pricePerGuest; }
+
+    public Boolean getActive() { return active == null || active; }
+    public void setActive(Boolean active) { this.active = active; }
 }

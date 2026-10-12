@@ -11,9 +11,10 @@ public class AddOnController {
     private AddOnService addOnService;
 
     @GetMapping
-    public List<AddOn> getAllAddOns(@RequestParam(required = false) String eventType) {
+    public List<AddOn> getAllAddOns(@RequestParam(required = false) String eventType,
+                                    @RequestParam(required = false) Boolean includeInactive) {
         if (eventType == null) {
-            return addOnService.getAllAddOns();
+            return Boolean.TRUE.equals(includeInactive) ? addOnService.getAllAddOns() : addOnService.getActiveAddOns();
         }
         return addOnService.getAddOnsForEventType(eventType);
     }

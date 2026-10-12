@@ -3,6 +3,8 @@ package com.rockhill.reception_hall.menu;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Optional;
 
 @Controller
@@ -23,8 +25,13 @@ public class AddOnPageController {
     }
 
     @PostMapping
-    public String create(@ModelAttribute AddOn addOn) {
-        addOnService.saveAddOn(addOn);
+    public String create(@ModelAttribute AddOn addOn, RedirectAttributes redirect) {
+        try {
+            addOnService.saveAddOn(addOn);
+            redirect.addFlashAttribute("success", "Add-on saved.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
         return "redirect:/admin/addons";
     }
 
@@ -39,21 +46,48 @@ public class AddOnPageController {
     }
 
     @PostMapping("/{id}/edit")
-    public String update(@PathVariable Integer id, @ModelAttribute AddOn form) {
-        addOnService.getAddOnById(id).ifPresent(existing -> {
-            existing.setName(form.getName());
-            existing.setPrice(form.getPrice());
-            existing.setUnitType(form.getUnitType());
-            existing.setIncludedInPackage(form.getIncludedInPackage());
-            existing.setIsWeddingExclusive(form.getIsWeddingExclusive());
-            addOnService.saveAddOn(existing);
-        });
-        return "redirect:/admin/addons";
+    public String update(@PathVariable Integer id, @ModelAttribute AddOn form, RedirectAttributes redirect) {
+        form.setAddonId(id);
+        try {
+            addOnService.saveAddOn(form);
+            redirect.addFlashAttribute("success", "Add-on updated.");
+            return "redirect:/admin/addons";
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+            return "redirect:/admin/addons/" + id + "/edit";
+        }
     }
 
     @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Integer id) {
-        addOnService.deleteAddOn(id);
+    public String delete(@PathVariable Integer id, RedirectAttributes redirect) {
+        try {
+            addOnService.deleteAddOn(id);
+            redirect.addFlashAttribute("success", "Add-on deleted.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
+        return "redirect:/admin/addons";
+    }
+
+    @PostMapping("/{id}/disable")
+    public String disable(@PathVariable Integer id, RedirectAttributes redirect) {
+        try {
+            addOnService.setAddOnActive(id, false);
+            redirect.addFlashAttribute("success", "Add-on disabled. New customers can no longer choose it.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
+        return "redirect:/admin/addons";
+    }
+
+    @PostMapping("/{id}/enable")
+    public String enable(@PathVariable Integer id, RedirectAttributes redirect) {
+        try {
+            addOnService.setAddOnActive(id, true);
+            redirect.addFlashAttribute("success", "Add-on enabled again.");
+        } catch (ResponseStatusException e) {
+            redirect.addFlashAttribute("error", e.getReason());
+        }
         return "redirect:/admin/addons";
     }
 }

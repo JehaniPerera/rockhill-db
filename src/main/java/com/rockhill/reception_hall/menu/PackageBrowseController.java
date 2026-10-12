@@ -21,7 +21,7 @@ public class PackageBrowseController {
 
     @GetMapping
     public String browse(Model model) {
-        List<Package> packages = packageService.getAllPackages();
+        List<Package> packages = packageService.getActivePackages();
 
         Map<Integer, List<PackagePricingTier>> tiersByPackage = new HashMap<>();
         for (Package p : packages) {

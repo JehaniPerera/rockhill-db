@@ -13,6 +13,8 @@ public class Package {
     private String name;
     private String description;
 
+    private Boolean active = true;
+
     public Integer getPackageId() { return packageId; }
     public void setPackageId(Integer packageId) { this.packageId = packageId; }
 
@@ -21,4 +23,7 @@ public class Package {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public Boolean getActive() { return active == null || active; }
+    public void setActive(Boolean active) { this.active = active; }
 }

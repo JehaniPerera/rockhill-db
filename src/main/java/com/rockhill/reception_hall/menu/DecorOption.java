@@ -17,6 +17,8 @@ public class DecorOption {
     @Column(name = "is_singular")
     private Boolean isSingular = false;
 
+    private Boolean active = true;
+
     public Integer getDecorId() { return decorId; }
     public void setDecorId(Integer decorId) { this.decorId = decorId; }
 
@@ -31,4 +33,7 @@ public class DecorOption {
 
     public Boolean getIsSingular() { return isSingular; }
     public void setIsSingular(Boolean isSingular) { this.isSingular = isSingular; }
+
+    public Boolean getActive() { return active == null || active; }
+    public void setActive(Boolean active) { this.active = active; }
 }

@@ -2,7 +2,6 @@ package com.rockhill.reception_hall.menu;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -13,8 +12,8 @@ public class PackageController {
     private PackageService packageService;
 
     @GetMapping
-    public List<Package> getAllPackages() {
-        return packageService.getAllPackages();
+    public List<Package> getAllPackages(@RequestParam(required = false) Boolean includeInactive) {
+        return Boolean.TRUE.equals(includeInactive) ? packageService.getAllPackages() : packageService.getActivePackages();
     }
 
     @GetMapping("/{id}")

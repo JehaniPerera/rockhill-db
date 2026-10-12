@@ -15,7 +15,7 @@ public class MenuBrowseController {
 
     @GetMapping
     public String browse(Model model) {
-        model.addAttribute("menus", menuService.getAllMenus());
+        model.addAttribute("menus", menuService.getActiveMenus());
         return "menu/browse";
     }
 }

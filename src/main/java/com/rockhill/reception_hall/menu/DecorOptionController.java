@@ -2,7 +2,6 @@ package com.rockhill.reception_hall.menu;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -13,8 +12,9 @@ public class DecorOptionController {
     private DecorOptionService decorOptionService;
 
     @GetMapping
-    public List<DecorOption> getAllDecorOptions() {
-        return decorOptionService.getAllDecorOptions();
+    public List<DecorOption> getAllDecorOptions(@RequestParam(required = false) Boolean includeInactive) {
+        return Boolean.TRUE.equals(includeInactive)
+                ? decorOptionService.getAllDecorOptions() : decorOptionService.getActiveDecorOptions();
     }
 
     @GetMapping("/{id}")

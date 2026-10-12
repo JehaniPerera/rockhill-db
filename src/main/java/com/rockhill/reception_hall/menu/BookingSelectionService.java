@@ -33,6 +33,11 @@ public class BookingSelectionService {
             throw bad(addOn.getName() + " is only available for wedding bookings.");
         }
 
+        if (!addOn.getActive()
+                && !bookingAddOnRepository.existsById(new BookingAddOnId(booking.getId(), addonId))) {
+            throw bad(addOn.getName() + " is no longer available.");
+        }
+
         int qty = quantity != null ? quantity
                 : ("per guest".equals(addOn.getUnitType()) ? booking.getGuestCount() : 1);
         if (qty < 1) {
@@ -73,6 +78,11 @@ public class BookingSelectionService {
         Booking booking = editableBooking(bookingId);
         DecorOption decor = decorOptionRepository.findById(decorId)
                 .orElseThrow(() -> notFound("Decor option not found: " + decorId));
+
+        if (!decor.getActive()
+                && !bookingDecorSelectionRepository.existsById(new BookingDecorSelectionId(booking.getId(), decorId))) {
+            throw bad(decor.getName() + " is no longer available.");
+        }
 
         boolean singular = Boolean.TRUE.equals(decor.getIsSingular());
         int qty;
