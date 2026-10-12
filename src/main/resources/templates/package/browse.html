@@ -16,7 +16,7 @@
                 <tr><th>Guests</th><th>Price</th></tr>
                 <tr th:each="t : ${tiersByPackage.get(p.packageId)}">
                     <td th:text="${t.minGuests} + ' - ' + ${t.maxGuests}"></td>
-                    <td class="price" th:text="'Rs. ' + ${t.totalPrice}"></td>
+                    <td class="price" th:text="'Rs. ' + ${#numbers.formatDecimal(t.totalPrice, 1, 'COMMA', 2, 'POINT')}"></td>
                 </tr>
             </table>
 

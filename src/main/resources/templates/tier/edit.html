@@ -4,6 +4,7 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/packages/{pid}/tiers(pid=${pkg.packageId})}">← Back to tiers</a></p>
     <h1 th:text="'Edit Tier - ' + ${pkg.name}"></h1>
     <form class="edit-form" th:action="@{/admin/packages/{pid}/tiers/{tid}/edit(pid=${pkg.packageId},tid=${tier.tierId})}" th:object="${tier}" method="post">

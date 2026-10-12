@@ -4,6 +4,7 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/packages}">← Back to packages</a></p>
     <h1>Edit Package</h1>
     <form class="edit-form" th:action="@{/admin/packages/{id}/edit(id=${pkg.packageId})}" th:object="${pkg}" method="post">

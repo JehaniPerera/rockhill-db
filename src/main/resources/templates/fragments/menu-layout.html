@@ -15,5 +15,9 @@
         <a th:href="@{/admin/catalog}">Admin</a>
     </nav>
 </header>
+<div th:fragment="messages">
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+</div>
 </body>
 </html>

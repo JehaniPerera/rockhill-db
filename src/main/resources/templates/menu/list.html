@@ -4,16 +4,27 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/catalog}">← Back to catalog</a></p>
     <h1>Menu Catalog</h1>
     <table>
-        <tr><th>ID</th><th>Name</th><th>Price per guest</th><th>Action</th></tr>
-        <tr th:each="m : ${menus}">
+        <tr><th>ID</th><th>Name</th><th>Price per guest</th><th>Status</th><th>Action</th></tr>
+        <tr th:each="m : ${menus}" th:classappend="${!m.active} ? 'row-disabled'">
             <td th:text="${m.menuId}"></td>
             <td th:text="${m.name}"></td>
-            <td th:text="${m.pricePerGuest}"></td>
+            <td th:text="${#numbers.formatDecimal(m.pricePerGuest, 1, 'COMMA', 2, 'POINT')}"></td>
+            <td>
+                <span class="badge" th:if="${m.active}">Active</span>
+                <span class="badge badge-off" th:unless="${m.active}">Disabled</span>
+            </td>
             <td>
                 <a class="btn" th:href="@{/admin/menus/{id}/edit(id=${m.menuId})}">Edit</a>
+                <form th:if="${m.active}" th:action="@{/admin/menus/{id}/disable(id=${m.menuId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn-secondary">Disable</button>
+                </form>
+                <form th:unless="${m.active}" th:action="@{/admin/menus/{id}/enable(id=${m.menuId})}" method="post" style="display:inline">
+                    <button type="submit">Enable</button>
+                </form>
                 <form th:action="@{/admin/menus/{id}/delete(id=${m.menuId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
                 </form>

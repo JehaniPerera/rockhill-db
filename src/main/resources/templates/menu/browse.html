@@ -8,7 +8,7 @@
     <div class="cards">
         <div class="card" th:each="m : ${menus}">
             <h3 th:text="${m.name}"></h3>
-            <p class="price">Rs. <span th:text="${m.pricePerGuest}"></span> per guest</p>
+            <p class="price">Rs. <span th:text="${#numbers.formatDecimal(m.pricePerGuest, 1, 'COMMA', 2, 'POINT')}"></span> per guest</p>
 
             <!-- RESERVED: dishes section goes here later. Not built yet. -->
             <div class="card-dishes"></div>

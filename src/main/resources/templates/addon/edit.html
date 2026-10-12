@@ -4,6 +4,7 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/addons}">← Back to add-ons</a></p>
     <h1>Edit Add-on</h1>
     <form class="edit-form" th:action="@{/admin/addons/{id}/edit(id=${addOn.addonId})}" th:object="${addOn}" method="post">

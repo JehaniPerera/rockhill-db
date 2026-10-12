@@ -4,21 +4,32 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/catalog}">← Back to catalog</a></p>
     <h1>Decor Catalog</h1>
     <table>
         <tr>
             <th>ID</th><th>Category</th><th>Name</th><th>Price</th>
-            <th>One per category</th><th>Action</th>
+            <th>One per category</th><th>Status</th><th>Action</th>
         </tr>
-        <tr th:each="d : ${options}">
+        <tr th:each="d : ${options}" th:classappend="${!d.active} ? 'row-disabled'">
             <td th:text="${d.decorId}"></td>
             <td th:text="${d.category}"></td>
             <td th:text="${d.name}"></td>
-            <td th:text="${d.price}"></td>
+            <td th:text="${#numbers.formatDecimal(d.price, 1, 'COMMA', 2, 'POINT')}"></td>
             <td th:text="${d.isSingular} ? 'Yes' : 'No'"></td>
             <td>
+                <span class="badge" th:if="${d.active}">Active</span>
+                <span class="badge badge-off" th:unless="${d.active}">Disabled</span>
+            </td>
+            <td>
                 <a class="btn" th:href="@{/admin/decor/{id}/edit(id=${d.decorId})}">Edit</a>
+                <form th:if="${d.active}" th:action="@{/admin/decor/{id}/disable(id=${d.decorId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn-secondary">Disable</button>
+                </form>
+                <form th:unless="${d.active}" th:action="@{/admin/decor/{id}/enable(id=${d.decorId})}" method="post" style="display:inline">
+                    <button type="submit">Enable</button>
+                </form>
                 <form th:action="@{/admin/decor/{id}/delete(id=${d.decorId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
                 </form>

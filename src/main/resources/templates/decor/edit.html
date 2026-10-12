@@ -4,6 +4,7 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/decor}">← Back to decor</a></p>
     <h1>Edit Decor Option</h1>
     <form class="edit-form" th:action="@{/admin/decor/{id}/edit(id=${decor.decorId})}" th:object="${decor}" method="post">

@@ -4,22 +4,33 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/catalog}">← Back to catalog</a></p>
     <h1>Add-on Catalog</h1>
     <table>
         <tr>
             <th>ID</th><th>Name</th><th>Price</th><th>Unit</th>
-            <th>Included in package</th><th>Wedding only</th><th>Action</th>
+            <th>Included in package</th><th>Wedding only</th><th>Status</th><th>Action</th>
         </tr>
-        <tr th:each="a : ${addons}">
+        <tr th:each="a : ${addons}" th:classappend="${!a.active} ? 'row-disabled'">
             <td th:text="${a.addonId}"></td>
             <td th:text="${a.name}"></td>
-            <td th:text="${a.price}"></td>
+            <td th:text="${#numbers.formatDecimal(a.price, 1, 'COMMA', 2, 'POINT')}"></td>
             <td th:text="${a.unitType}"></td>
             <td th:text="${a.includedInPackage} ? 'Yes' : 'No'"></td>
             <td th:text="${a.isWeddingExclusive} ? 'Yes' : 'No'"></td>
             <td>
+                <span class="badge" th:if="${a.active}">Active</span>
+                <span class="badge badge-off" th:unless="${a.active}">Disabled</span>
+            </td>
+            <td>
                 <a class="btn" th:href="@{/admin/addons/{id}/edit(id=${a.addonId})}">Edit</a>
+                <form th:if="${a.active}" th:action="@{/admin/addons/{id}/disable(id=${a.addonId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn-secondary">Disable</button>
+                </form>
+                <form th:unless="${a.active}" th:action="@{/admin/addons/{id}/enable(id=${a.addonId})}" method="post" style="display:inline">
+                    <button type="submit">Enable</button>
+                </form>
                 <form th:action="@{/admin/addons/{id}/delete(id=${a.addonId})}" method="post" style="display:inline">
                     <button type="submit" class="btn-danger">Delete</button>
                 </form>

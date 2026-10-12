@@ -4,6 +4,7 @@
 <body>
 <header th:replace="~{fragments/menu-layout :: nav}"></header>
 <main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
     <p><a th:href="@{/admin/menus}">← Back to menus</a></p>
     <h1>Edit Menu</h1>
     <form class="edit-form" th:action="@{/admin/menus/{id}/edit(id=${menu.menuId})}" th:object="${menu}" method="post">

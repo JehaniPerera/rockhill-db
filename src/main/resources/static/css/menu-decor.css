@@ -34,3 +34,8 @@ a.btn { display:inline-block; margin-right:6px; font-size:13px; }
 .edit-form label { display:block; margin-bottom:14px; font-weight:bold; }
 .edit-form label.check { font-weight:normal; }
 .edit-form input[type=text], .edit-form input[type=number], .edit-form select { display:block; width:100%; max-width:420px; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:4px; }
+.alert { padding:10px 14px; border-radius:4px; margin:12px 0; }
+.alert-error { background:#fbeaea; border:1px solid #e0b4b4; color:#8a1f1f; }
+.alert-success { background:#eef6ec; border:1px solid #c5dcc0; color:#2f5d2a; }
+.badge-off { background:#888; }
+.row-disabled td { color:#888; background:#f4f4f4; }
