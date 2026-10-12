@@ -13,11 +13,13 @@ public class MenuService {
     @Autowired
     private MenuRepository menuRepository;
 
+    @Autowired(required = false)
+    private CatalogUsageChecker usageChecker;
+
     public List<Menu> getAllMenus() {
         return menuRepository.findAll();
     }
 
-    // Only menus customers may choose (not disabled).
     public List<Menu> getActiveMenus() {
         return menuRepository.findAll().stream().filter(Menu::getActive).toList();
     }
@@ -46,11 +48,11 @@ public class MenuService {
 
         Integer id = menu.getMenuId();
         if (id == null) {
-            menu.setActive(true);                       // new menus start enabled
+            menu.setActive(true);
         } else {
             Menu existing = menuRepository.findById(id)
                     .orElseThrow(() -> notFound("Menu not found: " + id));
-            menu.setActive(existing.getActive());       // editing never changes enabled/disabled
+            menu.setActive(existing.getActive());
         }
         boolean duplicate = menuRepository.findAll().stream()
                 .anyMatch(m -> !m.getMenuId().equals(id) && sameName(m.getName(), menu.getName()));
@@ -63,6 +65,9 @@ public class MenuService {
     public void deleteMenu(Integer id) {
         if (!menuRepository.existsById(id)) {
             throw notFound("Menu not found: " + id);
+        }
+        if (usageChecker != null && usageChecker.isMenuUsed(id)) {
+            throw conflict("This menu is used by existing bookings and cannot be deleted. Disable it instead so new customers can no longer choose it.");
         }
         try {
             menuRepository.deleteById(id);

@@ -13,6 +13,9 @@ public class PackageService {
     @Autowired
     private PackageRepository packageRepository;
 
+    @Autowired(required = false)
+    private CatalogUsageChecker usageChecker;
+
     public List<Package> getAllPackages() {
         return packageRepository.findAll();
     }
@@ -61,6 +64,9 @@ public class PackageService {
     public void deletePackage(Integer id) {
         if (!packageRepository.existsById(id)) {
             throw notFound("Package not found: " + id);
+        }
+        if (usageChecker != null && usageChecker.isPackageUsed(id)) {
+            throw conflict("This package is used by existing bookings and cannot be deleted. Disable it instead so new customers can no longer choose it.");
         }
         try {
             packageRepository.deleteById(id);
