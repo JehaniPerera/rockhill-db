@@ -131,8 +131,10 @@
         const balancePaid = Number(b.balance_paid) > 0;
         const hasInvoice = Number(b.has_invoice) > 0;
         const cancelled = b.status === 'Cancelled';
+        const late = Number(b.late_booking) === 1;
+        const refundDone = b.deposit_refund_status && b.deposit_refund_status !== 'N/A';
         const canInvoice = !cancelled && balancePaid && !hasInvoice;
-        const canRefund = (b.status === 'Cancelled' || b.status === 'Completed') && depositPaid;
+        const canRefund = (b.status === 'Cancelled' || b.status === 'Completed') && depositPaid && !refundDone;
 
         $('btnInvoice').disabled = !canInvoice;
         $('btnRefund').disabled = !canRefund;
@@ -146,11 +148,13 @@
         else if (hasInvoice) hint = 'Invoice already issued. Use "View invoice" to open or print it.';
         else if (!balancePaid) hint = 'An invoice can only be generated after the balance is paid.';
         else hint = 'Balance paid. You can generate the invoice now.';
+        if (refundDone) hint += ' Deposit outcome: ' + b.deposit_refund_status + '.';
         $('hint').textContent = hint;
 
         const [label, cls] = paymentState(b);
         const remaining = cancelled ? '-' : (balancePaid ? rs(0) : rs(b.total_price));
-        const dueRow = (cancelled || balancePaid) ? '' : `<dt>Balance due by</dt><dd>${b.balance_due_date}</dd>`;
+        const dueText = late ? 'Immediately (event is less than 14 days away)' : b.balance_due_date;
+        const dueRow = (cancelled || balancePaid) ? '' : `<dt>Balance due by</dt><dd>${dueText}</dd>`;
 
         $('details').className = '';
         $('details').innerHTML = `<dl>
