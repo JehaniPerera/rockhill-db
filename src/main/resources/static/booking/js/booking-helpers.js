@@ -1,4 +1,4 @@
-// common.js - shared helpers for all booking pages
+// booking-helpers.js - shared helpers for all booking pages
 async function api(url, options) {
     options = options || {};
     const res = await fetch(url, Object.assign({}, options, { headers: { 'Content-Type': 'application/json' } }));
