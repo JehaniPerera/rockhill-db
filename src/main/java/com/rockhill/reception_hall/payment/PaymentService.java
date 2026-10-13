@@ -34,22 +34,32 @@ public class PaymentService {
     // ---- checks that save nothing: used when a customer uploads a payment proof ----
 
     public void validateDeposit(int bookingId) {
-        checkDeposit(requireBooking(bookingId), true);
+        checkDeposit(requireBooking(bookingId), false);
+        requireNotPastDue(bookingId);
     }
 
     // returns the amount this installment will be recorded as (null request = everything that is left)
     public BigDecimal validateBalance(int bookingId, BigDecimal requested) {
         BookingInfo booking = requireBooking(bookingId);
         BigDecimal remaining = checkBalance(booking);
+        requireNotPastDue(bookingId);
         return chooseInstallment(bookingId, remaining, requested);
     }
 
     public void validateFull(int bookingId) {
         BookingInfo booking = requireBooking(bookingId);
         checkFull(booking);
-        // the combined payment is only for late bookings; otherwise pay the deposit first, then the balance
-        if (!payments.isWithinBalanceWindow(booking.bookingId())) {
-            throw new IllegalStateException("The full amount at once is only for events less than 14 days away. Please pay the deposit first.");
+        // the due date has passed (event less than 14 days away): no online payment any more
+        requireNotPastDue(booking.bookingId());
+        throw new IllegalStateException("The full amount at once is only for events less than 14 days away. Please pay the deposit first.");
+    }
+
+    // Past the due date (14 days before the event) nothing can be paid online: the customer must contact the hall.
+    // This is only checked when a receipt is uploaded: a receipt uploaded in time can still be approved later.
+    private void requireNotPastDue(int bookingId) {
+        if (payments.isWithinBalanceWindow(bookingId)) {
+            throw new IllegalStateException("The payment due date has passed (14 days before the event), "
+                    + "so this booking can no longer be paid online. Please contact Rockhill Reception Hall.");
         }
     }
 
@@ -136,6 +146,7 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalStateException("Receipt not found"));
     }
 
+    @Transactional
     public String processRefund(int bookingId) {
         BookingInfo booking = requireBooking(bookingId);
         String status = booking.status();
@@ -154,6 +165,12 @@ public class PaymentService {
         if ("Cancelled".equals(status)) {
             result = Payment.RefundStatus.FORFEITED;
             message = "Booking was cancelled: deposit forfeited.";
+            // whatever the customer already paid towards the balance goes back to them
+            BigDecimal balancePaid = payments.sumPayments(bookingId, Payment.PaymentType.BALANCE);
+            if (balancePaid.signum() > 0) {
+                payments.updateBalanceRefundStatus(bookingId, Payment.RefundStatus.REFUNDED);
+                message += " Balance paid so far (" + money(balancePaid) + ") is marked as refunded: please send it back to the customer.";
+            }
         } else if (DEPOSIT_COUNTS_TOWARD_PRICE) {
             result = Payment.RefundStatus.NA;
             message = "Deposit was part of the price: nothing to refund.";

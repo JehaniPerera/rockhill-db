@@ -109,6 +109,12 @@ public class PaymentRepository {
                 status.dbValue(), bookingId);
     }
 
+    // cancelled booking: the balance installments the customer paid so far are given back
+    public void updateBalanceRefundStatus(int bookingId, Payment.RefundStatus status) {
+        jdbc.update("UPDATE Payment SET refund_status = ?, refund_date = CURDATE() WHERE booking_id = ? AND payment_type = 'Balance'",
+                status.dbValue(), bookingId);
+    }
+
     public List<Map<String, Object>> findBookingSummaries() {
         return jdbc.queryForList(
                 "SELECT b.id AS booking_id, c.name AS customer_name, b.event_type, " +
