@@ -145,36 +145,36 @@ INSERT IGNORE INTO booking_decor_selection (booking_id, decor_id, quantity, char
 
 
 -- -- 4. STAFF AND STAFF AVAILABILITY (Function 3, Perera)
---
--- INSERT IGNORE INTO staff (staff_id, name, role, type, contact) VALUES
--- (1,'Nimal Senanayake','Event Coordinator','Internal','0771100001'),
--- (2,'Kasun Bandara','Head Waiter','Internal','0771100002'),
--- (3,'Chamari Jayasinghe','Waitress','Internal','0771100003'),
--- (4,'Ruwan Samarasinghe','Head Cook','Internal','0771100004'),
--- (5,'Sampath Rathnayake','Security','Internal','0771100005'),
--- (6,'Dilan Wijesekara','DJ','Vendor','0771100006'),
--- (7,'Udara Flora & Decor','Decorator','Vendor','0771100007'),
--- (8,'Malith Gunasekara','Waiter','Internal','0771100008'),
--- (9,'Helakala Mandapaya','Dancing Group','Vendor','0772200001'),
--- (10,'Helakala Mandapaya','Jaya Mangala Gatha','Vendor','0772200002');
---
--- INSERT IGNORE INTO staff_availability (availability_id, staff_id, unavailable_date, reason) VALUES
--- (1,3, '2026-10-31', 'Leave'),
--- (2,5, '2026-11-20', 'Leave'),
--- (3,8, '2026-12-01', 'Family commitment');
---
---
--- -- 5. STAFF ASSIGNMENTS (Function 3, Perera) - needs bookings 1, 2, 4, 5, 6
---
--- INSERT IGNORE INTO staff_assignment (booking_id, staff_id, assigned_date) VALUES
--- (1,1,'2026-08-15'),(1,2,'2026-08-15'),(1,3,'2026-08-15'),
--- (1,7,'2026-08-15'),(1,9,'2026-08-15'),(1,10,'2026-08-15'),
--- (2,1,'2026-09-05'),(2,2,'2026-09-05'),(2,3,'2026-09-05'),(2,4,'2026-09-05'),
--- (4,1,'2026-10-24'),(4,2,'2026-10-24'),(4,6,'2026-10-24'),(4,7,'2026-10-24'),
--- (4,8,'2026-10-24'),(4,9,'2026-10-24'),(4,10,'2026-10-24'),
--- (5,1,'2026-11-14'),(5,3,'2026-11-14'),(5,5,'2026-11-14'),(5,8,'2026-11-14'),
--- (6,1,'2026-12-12'),(6,2,'2026-12-12'),(6,6,'2026-12-12'),
--- (6,7,'2026-12-12'),(6,9,'2026-12-12'),(6,10,'2026-12-12');
+
+INSERT IGNORE INTO staff (staff_id, name, role, type, contact) VALUES
+(1,'Nimal Senanayake','Event Coordinator','Internal','0771100001'),
+(2,'Kasun Bandara','Head Waiter','Internal','0771100002'),
+(3,'Chamari Jayasinghe','Waitress','Internal','0771100003'),
+(4,'Ruwan Samarasinghe','Head Cook','Internal','0771100004'),
+(5,'Sampath Rathnayake','Security','Internal','0771100005'),
+(6,'Dilan Wijesekara','DJ','Vendor','0771100006'),
+(7,'Udara Flora & Decor','Decorator','Vendor','0771100007'),
+(8,'Malith Gunasekara','Waiter','Internal','0771100008'),
+(9,'Helakala Mandapaya','Dancing Group','Vendor','0772200001'),
+(10,'Helakala Mandapaya','Jaya Mangala Gatha','Vendor','0772200002');
+
+INSERT IGNORE INTO staff_availability (availability_id, staff_id, unavailable_date, reason) VALUES
+(1,3, '2026-10-31', 'Leave'),
+(2,5, '2026-11-20', 'Leave'),
+(3,8, '2026-12-01', 'Family commitment');
+
+
+-- 5. STAFF ASSIGNMENTS (Function 3, Perera) - needs bookings 1, 2, 4, 5, 6
+
+INSERT IGNORE INTO staff_assignment (booking_id, staff_id, assigned_date) VALUES
+(1,1,'2026-08-15'),(1,2,'2026-08-15'),(1,3,'2026-08-15'),
+(1,7,'2026-08-15'),(1,9,'2026-08-15'),(1,10,'2026-08-15'),
+(2,1,'2026-09-05'),(2,2,'2026-09-05'),(2,3,'2026-09-05'),(2,4,'2026-09-05'),
+(4,1,'2026-10-24'),(4,2,'2026-10-24'),(4,6,'2026-10-24'),(4,7,'2026-10-24'),
+(4,8,'2026-10-24'),(4,9,'2026-10-24'),(4,10,'2026-10-24'),
+(5,1,'2026-11-14'),(5,3,'2026-11-14'),(5,5,'2026-11-14'),(5,8,'2026-11-14'),
+(6,1,'2026-12-12'),(6,2,'2026-12-12'),(6,6,'2026-12-12'),
+(6,7,'2026-12-12'),(6,9,'2026-12-12'),(6,10,'2026-12-12');
 
 
 -- 6. PAYMENTS (Function 4, Fernando)
