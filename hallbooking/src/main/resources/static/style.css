@@ -22,3 +22,7 @@ th{font-size:12px;text-transform:uppercase;color:#777}
 .checks label{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:#222}
 #toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:8px;color:#fff;opacity:0;transition:.25s;pointer-events:none;max-width:360px}
 #toast.show{opacity:1}#toast.ok{background:#2e7d32}#toast.err{background:#b3261e}
+textarea{padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px;font-family:inherit;resize:vertical}
+button.good{background:#2e7d32}button.good:hover{background:#388e3c}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:13px;color:#fff}
+.badge.ok{background:#2e7d32}.badge.bad{background:#b3261e}

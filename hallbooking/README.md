@@ -4,7 +4,7 @@ Spring Boot 3 (Java 17) + Spring Data JPA + MySQL. Layered: controller -> servic
 
 ## 1. Setup (in this order)
 1. In MySQL Workbench run the group script `OOAD_Rockhill_Database.sql` (creates DB `rockhill` + sample data).
-2. Then run `sql/StaffAvailability.sql` (adds the StaffAvailability table + a unique key).
+2. Then run `sql/StaffAvailability.sql` (adds the StaffAvailability table + a unique key), then `sql/HallDamageReport.sql` (adds the HallDamageReport table).
 3. Put your MySQL password in `src/main/resources/application.properties`.
 4. Run `HallBookingApplication` (or `mvn spring-boot:run`). Hibernate does NOT touch the tables (`ddl-auto=none`).
 5. Test with Postman at `http://localhost:8080`.
@@ -43,3 +43,15 @@ Marking staff 1 unavailable on 2026-10-24 gives 409 (confirmed assignment on boo
 Plain HTML/CSS/JS in `src/main/resources/static/` (served by Spring Boot, no npm needed, so no CORS setup either).
 Run the app, then open **http://localhost:8080**. Tabs: Staff/Vendors (CRUD), Availability, Assign to Booking.
 Added `GET /api/bookings` (BookingController) so the Assign tab can show a booking dropdown.
+
+## 6. Hall damage check (staff admin -> Payment function)
+After an event (Booking status = **Completed**) the staff admin opens the **Hall Damage** tab and presses **No damage** or **Hall damaged** (notes required when damaged). One report per booking, stored in table `HallDamageReport`.
+
+| Method & URL | Body |
+|---|---|
+| `POST /api/bookings/{id}/damage-report` | `{"damaged":true,"notes":"Broken chairs"}` (201; 409 if already exists; 400 if booking not Completed) |
+| `PUT /api/bookings/{id}/damage-report` | same body, changes the existing report |
+| `GET /api/bookings/{id}/damage-report` | 404 = staff has not reported yet |
+| `GET /api/damage-reports` | all reports |
+
+**For the Payment function:** inject `DamageReportService` and call `findByBookingId(bookingId)` -> `Optional<DamageReportResponse>` (`damaged`, `notes`). Empty = not checked yet. Use it to decide whether the extra Rs. 20,000 is returned. Test: `UPDATE Booking SET status='Completed' WHERE booking_id=4;`

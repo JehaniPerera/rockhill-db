@@ -12,6 +12,7 @@
   <button class="tab active" data-tab="staff">Staff / Vendors</button>
   <button class="tab" data-tab="avail">Availability</button>
   <button class="tab" data-tab="assign">Assign to Booking</button>
+  <button class="tab" data-tab="damage">Hall Damage</button>
 </nav>
 <main>
 <section id="tab-staff">
@@ -46,6 +47,22 @@
   <table class="card"><thead><tr><th>Name</th><th>Role</th><th>Type</th><th>Date</th><th>Replace with</th></tr></thead><tbody id="as-assigned"></tbody></table>
   <h3>Available on event date</h3>
   <div class="card"><div id="as-avail" class="checks"></div><button id="as-assign">Assign selected</button></div>
+</section>
+
+<section id="tab-damage" hidden>
+  <div class="card grid">
+    <label>Completed booking<select id="dm-booking"></select></label>
+    <div class="actions"><button id="dm-load">Load</button></div>
+  </div>
+  <div class="card">
+    <p id="dm-status" class="muted">Select a completed booking.</p>
+    <label>Damage details (required if the hall is damaged)<textarea id="dm-notes" rows="3" maxlength="500" placeholder="e.g. Broken chairs, stained curtain..."></textarea></label>
+    <div class="actions" style="margin-top:12px">
+      <button id="dm-ok" class="good">No damage</button>
+      <button id="dm-bad" class="danger">Hall damaged</button>
+    </div>
+    <p class="muted">This result is sent to the Payment function, which decides whether the extra Rs. 20,000 is returned.</p>
+  </div>
 </section>
 </main>
 <div id="toast"></div>

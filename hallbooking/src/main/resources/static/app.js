@@ -14,7 +14,9 @@ async function api(path, method = 'GET', body) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const fe = data && data.fieldErrors ? ' (' + Object.values(data.fieldErrors).join(', ') + ')' : '';
-    throw new Error(((data && data.message) || 'Error ' + res.status) + fe);
+    const err = new Error(((data && data.message) || 'Error ' + res.status) + fe);
+    err.status = res.status;
+    throw err;
   }
   return data;
 }
@@ -23,9 +25,10 @@ const run = fn => async (...a) => { try { await fn(...a); } catch (e) { toast(e.
 // ---------- tabs ----------
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
-  ['staff', 'avail', 'assign'].forEach(t => $('#tab-' + t).hidden = t !== b.dataset.tab);
+  ['staff', 'avail', 'assign', 'damage'].forEach(t => $('#tab-' + t).hidden = t !== b.dataset.tab);
   if (b.dataset.tab === 'assign') run(loadBookings)();
   if (b.dataset.tab === 'avail') run(loadDates)();
+  if (b.dataset.tab === 'damage') run(loadDamageBookings)();
 });
 
 // ---------- 1. staff ----------
@@ -91,6 +94,7 @@ async function loadBookings() {
   const b = await api('/bookings');
   $('#as-booking').innerHTML = b.map(x => `<option value="${x.bookingId}">#${x.bookingId} · ${x.eventDate} · ${x.status}</option>`).join('');
   if (keep) $('#as-booking').value = keep;
+  return b;
 }
 async function loadAssign() {
   const id = $('#as-booking').value;
@@ -125,5 +129,41 @@ $('#as-assigned').onclick = run(async e => {
   await api(`/bookings/${$('#as-booking').value}/assignments/${old}`, 'PUT', { newStaffId: +sel.value });
   toast('Reassigned'); await loadAssign();
 });
+
+// ---------- 4. hall damage (staff admin -> payment) ----------
+let dmExisting = null;
+async function loadDamageBookings() {
+  const keep = $('#dm-booking').value;
+  const done = (await api('/bookings')).filter(x => x.status === 'Completed');
+  $('#dm-booking').innerHTML = done.map(x => `<option value="${x.bookingId}">#${x.bookingId} · ${x.eventDate}</option>`).join('')
+    || '<option value="">No completed bookings</option>';
+  if (keep) $('#dm-booking').value = keep;
+  await loadDamage();
+}
+async function loadDamage() {
+  const id = $('#dm-booking').value;
+  dmExisting = null; $('#dm-notes').value = '';
+  if (!id) { $('#dm-status').innerHTML = 'No completed booking to check yet.'; return; }
+  try {
+    dmExisting = await api(`/bookings/${id}/damage-report`);
+  } catch (e) {
+    if (e.status !== 404) throw e;
+  }
+  if (!dmExisting) { $('#dm-status').innerHTML = 'No report submitted yet for this booking.'; return; }
+  $('#dm-notes').value = dmExisting.notes || '';
+  $('#dm-status').innerHTML = `Current report: <span class="badge ${dmExisting.damaged ? 'bad' : 'ok'}">${dmExisting.damaged ? 'Damaged' : 'No damage'}</span>
+    <span class="muted">· submitted ${esc(String(dmExisting.reportedAt).replace('T', ' ').slice(0, 16))}</span>`;
+}
+async function submitDamage(damaged) {
+  const id = $('#dm-booking').value;
+  if (!id) return toast('Select a completed booking', false);
+  const body = { damaged, notes: $('#dm-notes').value };
+  await (dmExisting ? api(`/bookings/${id}/damage-report`, 'PUT', body) : api(`/bookings/${id}/damage-report`, 'POST', body));
+  toast('Sent to payment: ' + (damaged ? 'Hall damaged' : 'No damage')); await loadDamage();
+}
+$('#dm-load').onclick = run(loadDamageBookings);
+$('#dm-booking').onchange = run(loadDamage);
+$('#dm-ok').onclick = run(() => submitDamage(false));
+$('#dm-bad').onclick = run(() => submitDamage(true));
 
 run(loadStaff)();
