@@ -8,8 +8,8 @@ import java.time.LocalDate;
 @PrimaryKeyJoinColumn(name = "booking_id")
 public class OtherEventBooking extends Booking {
 
-    @Column(name = "menu_id", nullable = false)
-    private Long menuId;      // catering menu (Function 2)
+    @Column(name = "menu_id")   // NULL until the customer picks a menu in Function 2
+    private Long menuId;
 
     /** What kind of event it is, e.g. Birthday, Engagement, Corporate event. */
     @Column(name = "event_description", length = 50)
@@ -17,9 +17,8 @@ public class OtherEventBooking extends Booking {
 
     protected OtherEventBooking() {}
     public OtherEventBooking(Customer customer, LocalDate eventDate, EventType type, int guestCount,
-                             Long menuId, String eventDescription) {
+                             String eventDescription) {
         super(customer, eventDate, type, guestCount);
-        this.menuId = menuId;
         this.eventDescription = eventDescription;
     }
     public Long getMenuId() { return menuId; }

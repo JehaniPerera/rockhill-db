@@ -72,19 +72,18 @@ public class BookingService {
         return result;
     }
 
-    // ---- Scenarios 2 & 3: create the Pending booking as a draft (Option A) ----
+    // ---- Scenarios 2 & 3: create the Pending draft (details + date only; Function 2 adds the choices) ----
     public Booking createPending(BookingRequest r) {
         validateGuestCount(r.eventType(), r.guestCount());
         if (!isDateAvailable(r.eventDate()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Date is not available");
         Customer c = findOrCreateCustomer(r);
-        Booking b = factory.create(c, r.eventDate(), r.eventType(), r.guestCount(),
-                r.selectionId(), r.eventDescription());
+        Booking b = factory.create(c, r.eventDate(), r.eventType(), r.guestCount(), r.eventDescription());
         try {
             return bookings.saveAndFlush(b);   // DB unique constraint on active_event_date is the final guard
         } catch (DataIntegrityViolationException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Could not save the booking: the date was just taken, or the selected package/menu does not exist");
+                    "Could not save the booking: the date was just taken");
         }
     }
 
@@ -142,6 +141,11 @@ public class BookingService {
     // ---- customer presses the final Submit ----
     public Booking submit(Long id) {
         Booking b = editableBooking(id);
+        // Function 2 saves the package / menu on the booking; it must be chosen before the request is sent.
+        if (b instanceof WeddingBooking w && w.getPackageId() == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please choose a wedding package before submitting");
+        if (b instanceof OtherEventBooking o && o.getMenuId() == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please choose a menu before submitting");
         b.setSubmitted(true);
         publisher.publishEvent(new BookingEvent(b, Type.SUBMITTED));   // notifies the admin
         return b;

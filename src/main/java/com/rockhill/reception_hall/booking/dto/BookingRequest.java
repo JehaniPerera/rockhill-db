@@ -15,6 +15,7 @@ public record BookingRequest(
         @NotNull(message = "Event date is required") @Future LocalDate eventDate,
         @NotNull(message = "Event type is required") EventType eventType,
         @Min(value = 1, message = "Guest count is required") int guestCount,
-        @NotNull(message = "Package or menu is required") Long selectionId,
         @Size(max = 50) String eventDescription) {
+        // Function 1 only collects the customer's details, the date and the event type.
+        // The package / menu, add-ons and decor are chosen afterwards in Function 2.
 }

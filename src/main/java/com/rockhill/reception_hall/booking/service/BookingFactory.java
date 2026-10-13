@@ -7,10 +7,9 @@ import java.time.LocalDate;
 /** Factory pattern: picks the right Booking subclass from the event type. */
 @Component
 public class BookingFactory {
-    public Booking create(Customer c, LocalDate date, EventType type, int guests,
-                          Long selectionId, String eventDescription) {
+    public Booking create(Customer c, LocalDate date, EventType type, int guests, String eventDescription) {
         return type == EventType.WEDDING
-                ? new WeddingBooking(c, date, guests, selectionId)
-                : new OtherEventBooking(c, date, type, guests, selectionId, eventDescription);
+                ? new WeddingBooking(c, date, guests)
+                : new OtherEventBooking(c, date, type, guests, eventDescription);
     }
 }
