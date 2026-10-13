@@ -1,85 +1,456 @@
-// booking-flow.js - Function 1 intake step, used by wedding-booking.html and event-booking.html
-//   initBookingPage('WEDDING')  -> wedding-booking.html
-//   initBookingPage('OTHER')    -> event-booking.html
-// Collects the customer's details, the date and the guest count, checks that the date is free,
-// creates the Pending draft (this holds the date) and hands the customer over to Function 2,
-// which is where the package / menu, add-ons, decor and the final summary + Submit button live.
-//   Wedding      -> /booking/{id}/select/package
-//   Other events -> /booking/{id}/select/menu
+// ============================================================
+// booking-flow.js
+// Function 1: Customer details and availability
+//
+// Wedding booking:
+//   Function 1 -> Function 2 (Wedding package selection)
+//
+// Event booking:
+//   Function 1 -> Function 2 (Event menu selection)
+//
+// Java files do not need to be changed for this JavaScript update.
+// ============================================================
+
 function initBookingPage(type) {
+
     const isWedding = type === 'WEDDING';
+
     const $ = id => document.getElementById(id);
 
-    $('eventDate').min = tomorrow();
+    const checkBtn = $('checkBtn');
+    const continueBtn = $('continueBtn');
+    const eventDateInput = $('eventDate');
 
-    if (!isWedding) {   // event page only: the free-text box is needed just for "Other"
-        const onTypeChange = () => $('descWrap').classList.toggle('hidden', $('eventType').value !== 'OTHER');
-        $('eventType').addEventListener('change', onTypeChange);
-        onTypeChange();
+    // Prevent initialization errors if an expected HTML element is missing.
+    if (!checkBtn || !continueBtn || !eventDateInput) {
+        console.error(
+            'Booking page initialization failed. Missing HTML element:',
+            {
+                checkBtn: !!checkBtn,
+                continueBtn: !!continueBtn,
+                eventDate: !!eventDateInput
+            }
+        );
+
+        return;
     }
 
-    // ---------- availability (Scenario 1) ----------
+    // Track the date that was checked for availability.
+    let availableDate = null;
+
+    // Prevent selecting a past date.
+    if (typeof tomorrow === 'function') {
+        eventDateInput.min = tomorrow();
+    }
+
+
+    // ========================================================
+    // EVENT TYPE
+    // ========================================================
+
+    if (!isWedding) {
+
+        const eventTypeInput = $('eventType');
+        const descWrap = $('descWrap');
+
+        if (eventTypeInput && descWrap) {
+
+            function updateEventType() {
+
+                descWrap.classList.toggle(
+                    'hidden',
+                    eventTypeInput.value !== 'OTHER'
+                );
+
+            }
+
+            eventTypeInput.addEventListener(
+                'change',
+                updateEventType
+            );
+
+            updateEventType();
+
+        }
+
+    }
+
+
+    // ========================================================
+    // RESET AVAILABILITY WHEN THE DATE CHANGES
+    // ========================================================
+
+    eventDateInput.addEventListener('change', () => {
+
+        availableDate = null;
+
+        if ($('msg')) {
+            clearMsg('msg');
+        }
+
+        if ($('suggestions')) {
+            $('suggestions').innerHTML = '';
+        }
+
+    });
+
+
+    // ========================================================
+    // SHOW ALTERNATIVE DATES
+    // ========================================================
+
     function showSuggestions(list) {
+
         const box = $('suggestions');
+
+        if (!box) {
+            return;
+        }
+
         box.innerHTML = '';
-        if (!list || !list.length) return;
-        box.appendChild(document.createTextNode('Nearest open dates: '));
-        list.forEach(d => {
-            const b = document.createElement('button');
-            b.type = 'button'; b.className = 'btn small secondary'; b.textContent = d;
-            b.addEventListener('click', () => { $('eventDate').value = d; box.innerHTML = ''; clearMsg('msg'); });
-            box.appendChild(b);
+
+        if (!Array.isArray(list) || list.length === 0) {
+            return;
+        }
+
+        box.appendChild(
+            document.createTextNode('Nearest open dates: ')
+        );
+
+        list.forEach(date => {
+
+            const button = document.createElement('button');
+
+            button.type = 'button';
+
+            button.className = 'btn small secondary';
+
+            button.textContent = date;
+
+            button.addEventListener('click', () => {
+
+                eventDateInput.value = date;
+
+                availableDate = null;
+
+                box.innerHTML = '';
+
+                if ($('msg')) {
+                    clearMsg('msg');
+                }
+
+            });
+
+            box.appendChild(button);
+
         });
+
     }
+
+
+    // ========================================================
+    // CHECK DATE AVAILABILITY
+    // ========================================================
 
     async function checkAvailability() {
-        const date = $('eventDate').value;
-        if (!date) { showMsg('msg', 'Please pick an event date.'); return false; }
-        try {
-            const r = await api('/api/bookings/availability?date=' + encodeURIComponent(date));
-            if (r.available) { $('suggestions').innerHTML = ''; showMsg('msg', date + ' is available.', 'success'); return true; }
-            showMsg('msg', 'Sorry, ' + date + ' is not available.');
-            showSuggestions(r.suggestions);
+
+        const date = eventDateInput.value;
+
+        if (!date) {
+
+            showMsg('msg', 'Please pick an event date.');
+
             return false;
-        } catch (e) { showMsg('msg', e.message); return false; }
-    }
-    $('checkBtn').addEventListener('click', async () => { clearMsg('msg'); $('suggestions').innerHTML = ''; await checkAvailability(); });
 
-    // ---------- Continue: validate -> create the Pending draft -> go to Function 2 ----------
-    $('continueBtn').addEventListener('click', async () => {
-        clearMsg('msg'); $('suggestions').innerHTML = '';
-        const eventType = isWedding ? 'WEDDING' : $('eventType').value;
-        if (!isWedding && !eventType) { showMsg('msg', 'Please choose the type of event.'); return; }
-        const body = {
-            customerName: $('customerName').value.trim(),
-            customerPhone: $('customerPhone').value.trim(),
-            customerEmail: $('customerEmail').value.trim(),
-            eventDate: $('eventDate').value,
-            eventType: eventType,
-            guestCount: parseInt($('guestCount').value, 10)
-            // no selectionId: Function 2 chooses the package / menu next
-        };
-        if (!isWedding) {
-            const sel = $('eventType');
-            body.eventDescription = eventType === 'OTHER'
-                ? $('eventDescription').value.trim()
-                : sel.options[sel.selectedIndex].text;
         }
-        const problem = validateBooking(body, isWedding);
-        if (problem) { showMsg('msg', problem); return; }
 
-        $('continueBtn').disabled = true;
         try {
-            const booking = await api(isWedding ? '/api/bookings/wedding' : '/api/bookings/event',
-                { method: 'POST', body: JSON.stringify(body) });
-            // Function 2 takes over from here.
-            location.href = '/booking/' + booking.id + '/select/' + (isWedding ? 'package' : 'menu');
-        } catch (e) {
-            $('continueBtn').disabled = false;
-            showMsg('msg', e.message);
-            if (/not available|just taken/i.test(e.message)) {
-                try { const r = await api('/api/bookings/availability?date=' + encodeURIComponent(body.eventDate)); showSuggestions(r.suggestions); } catch (x) { /* ignore */ }
+
+            const result = await api(
+                '/api/bookings/availability?date=' +
+                encodeURIComponent(date)
+            );
+
+            if (result && result.available) {
+
+                availableDate = date;
+
+                if ($('suggestions')) {
+                    $('suggestions').innerHTML = '';
+                }
+
+                showMsg(
+                    'msg',
+                    date + ' is available.',
+                    'success'
+                );
+
+                return true;
+
             }
+
+            availableDate = null;
+
+            showMsg(
+                'msg',
+                'Sorry, ' + date + ' is not available.'
+            );
+
+            showSuggestions(
+                result ? result.suggestions : []
+            );
+
+            return false;
+
+        } catch (error) {
+
+            availableDate = null;
+
+            console.error(
+                'Availability check failed:',
+                error
+            );
+
+            showMsg(
+                'msg',
+                error.message || 'Unable to check availability.'
+            );
+
+            return false;
+
         }
+
+    }
+
+
+    // Connect the Check availability button.
+    checkBtn.addEventListener('click', async () => {
+
+        if ($('msg')) {
+            clearMsg('msg');
+        }
+
+        if ($('suggestions')) {
+            $('suggestions').innerHTML = '';
+        }
+
+        checkBtn.disabled = true;
+
+        try {
+
+            await checkAvailability();
+
+        } finally {
+
+            checkBtn.disabled = false;
+
+        }
+
     });
+
+
+    // ========================================================
+    // CONTINUE TO FUNCTION 2
+    // ========================================================
+
+    continueBtn.addEventListener('click', async () => {
+
+        if ($('msg')) {
+            clearMsg('msg');
+        }
+
+        if ($('suggestions')) {
+            $('suggestions').innerHTML = '';
+        }
+
+        // Determine the event type.
+        let eventType;
+
+        if (isWedding) {
+
+            eventType = 'WEDDING';
+
+        } else {
+
+            const eventTypeInput = $('eventType');
+
+            if (!eventTypeInput) {
+
+                showMsg(
+                    'msg',
+                    'The event type field could not be found.'
+                );
+
+                return;
+
+            }
+
+            eventType = eventTypeInput.value;
+
+            if (!eventType) {
+
+                showMsg(
+                    'msg',
+                    'Please choose the type of event.'
+                );
+
+                return;
+
+            }
+
+        }
+
+
+        // Collect the customer information.
+        const body = {
+
+            customerName: $('customerName')
+                ? $('customerName').value.trim()
+                : '',
+
+            customerPhone: $('customerPhone')
+                ? $('customerPhone').value.trim()
+                : '',
+
+            customerEmail: $('customerEmail')
+                ? $('customerEmail').value.trim()
+                : '',
+
+            eventDate: eventDateInput.value,
+
+            eventType: eventType,
+
+            guestCount: $('guestCount')
+                ? parseInt($('guestCount').value, 10)
+                : NaN
+
+        };
+
+
+        // Event description is needed for event bookings.
+        if (!isWedding) {
+
+            const eventTypeInput = $('eventType');
+
+            const descriptionInput = $('eventDescription');
+
+            if (eventType === 'OTHER') {
+
+                body.eventDescription = descriptionInput
+                    ? descriptionInput.value.trim()
+                    : '';
+
+            } else if (eventTypeInput) {
+
+                body.eventDescription =
+                    eventTypeInput.options[
+                        eventTypeInput.selectedIndex
+                        ].text;
+
+            }
+
+        }
+
+
+        // Validate the booking details.
+        const problem = validateBooking(body, isWedding);
+
+        if (problem) {
+
+            showMsg('msg', problem);
+
+            return;
+
+        }
+
+
+        // Ensure the customer has checked this date.
+        if (availableDate !== body.eventDate) {
+
+            showMsg(
+                'msg',
+                'Please click Check availability and confirm your date before continuing.'
+            );
+
+            return;
+
+        }
+
+
+        // Prevent duplicate submissions.
+        continueBtn.disabled = true;
+
+        checkBtn.disabled = true;
+
+
+        try {
+
+            // Create an unsubmitted draft so Function 2 has an ID. Drafts do not block availability.
+            const booking = await api(
+
+                isWedding
+                    ? '/api/bookings/wedding'
+                    : '/api/bookings/event',
+
+                {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                }
+
+            );
+
+
+            // Verify that the booking ID was returned.
+            if (!booking || booking.id == null) {
+
+                throw new Error(
+                    'The booking response does not contain a booking ID. Check the API response.'
+                );
+
+            }
+
+
+            // Choose the correct Function 2 destination.
+            const selectionType = isWedding
+                ? 'package'
+                : 'menu';
+
+
+            // Navigate to Function 2.
+            const destination =
+                '/booking/' +
+                encodeURIComponent(booking.id) +
+                '/select/' +
+                selectionType;
+
+            console.log(
+                'Booking created successfully. Redirecting to:',
+                destination
+            );
+
+            window.location.href = destination;
+
+
+        } catch (error) {
+
+            console.error(
+                'Continue to Function 2 failed:',
+                error
+            );
+
+            showMsg(
+                'msg',
+                'Unable to continue: ' +
+                (error.message || 'An unexpected error occurred.')
+            );
+
+            continueBtn.disabled = false;
+
+            checkBtn.disabled = false;
+
+        }
+
+    });
+
+
 }
