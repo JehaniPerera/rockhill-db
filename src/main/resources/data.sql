@@ -144,7 +144,7 @@ INSERT IGNORE INTO booking_decor_selection (booking_id, decor_id, quantity, char
 (8, 10, 1,  0.00);
 
 
--- 4. STAFF AND STAFF AVAILABILITY (Function 3, Perera)
+-- -- 4. STAFF AND STAFF AVAILABILITY (Function 3, Perera)
 
 INSERT IGNORE INTO staff (staff_id, name, role, type, contact) VALUES
 (1,'Nimal Senanayake','Event Coordinator','Internal','0771100001'),
@@ -202,3 +202,4 @@ INSERT IGNORE INTO Invoice (invoice_id, booking_id, total_amount, issue_date) VA
 INSERT IGNORE INTO PaymentProof (proof_id, booking_id, payment_type, amount, bank_reference, file_name, content_type, status, rejection_reason, submitted_at, reviewed_at) VALUES
 (1, 4, 'Balance', 815000.00, 'BT-20261012-001', '43155aca-14db-4ec6-a7c5-f41105912cdc.png', 'image/png', 'Pending Approval', NULL, '2026-10-12 14:30:00', NULL),
 (2, 6, 'Balance', 970000.00, 'BT-20261010-044', 'missing-demo-file.png', 'image/png', 'Rejected', 'Amount on the slip does not match the balance due. Please upload the correct slip.', '2026-10-10 09:15:00', '2026-10-10 16:40:00');
+
