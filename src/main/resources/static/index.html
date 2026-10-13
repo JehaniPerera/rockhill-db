@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rockhill Reception Hall - Staff Management</title>
+<link rel="stylesheet" href="css/staff-theme.css">
+</head>
+<body>
+<header>
+  <h1>Rockhill Reception Hall</h1>
+  <p>Staff &amp; vendor management</p>
+</header>
+<nav id="tabs">
+  <button data-t="staff" class="on">Staff</button>
+  <button data-t="avail">Availability</button>
+  <button data-t="assign">Assignments</button>
+  <button data-t="damage">Damage Reports</button>
+</nav>
+<main>
+
+<!-- STAFF -->
+<section id="staff" class="on">
+  <div class="card">
+    <h2 id="staffFormTitle">Add staff / vendor</h2>
+    <div class="row">
+      <label>Name<input id="sName" maxlength="100"></label>
+      <label>Role<input id="sRole" maxlength="50" placeholder="e.g. Waiter, Decorator"></label>
+      <label>Type<select id="sType"><option>Internal</option><option>Vendor</option></select></label>
+      <label>Contact<input id="sContact" maxlength="100"></label>
+      <button class="b" id="sSave">Save</button>
+      <button class="b sec" id="sCancel" style="display:none">Cancel</button>
+    </div>
+  </div>
+  <div class="card"><h2>All staff</h2><div id="staffTable"></div></div>
+</section>
+
+<!-- AVAILABILITY -->
+<section id="avail">
+  <div class="card">
+    <h2>Mark a staff member unavailable</h2>
+    <div class="row">
+      <label>Staff<select id="aStaff"></select></label>
+      <label>Date<input type="date" id="aDate"></label>
+      <label>Reason<input id="aReason" maxlength="255"></label>
+      <button class="b" id="aSave">Mark unavailable</button>
+    </div>
+  </div>
+  <div class="card"><h2>Blocked dates</h2><div id="availTable"></div></div>
+</section>
+
+<!-- ASSIGNMENTS -->
+<section id="assign">
+  <div class="card">
+    <h2>Select booking</h2>
+    <div class="row">
+      <label>Booking<select id="bSel"></select></label>
+    </div>
+    <div id="bInfo" class="empty"></div>
+  </div>
+  <div class="card">
+    <h2>Assign staff</h2>
+    <div class="row">
+      <label>Filter by role (optional)<input id="roleFilter" placeholder="e.g. Waiter"></label>
+      <button class="b sec" id="loadAvail">Show available staff</button>
+    </div>
+    <div class="checks" id="availList"></div>
+    <button class="b" id="doAssign" style="display:none">Assign selected</button>
+  </div>
+  <div class="card"><h2>Current assignments</h2><div id="assignTable"></div></div>
+</section>
+
+<!-- DAMAGE -->
+<section id="damage">
+  <div class="card">
+    <h2>Record hall damage report</h2>
+    <div class="row">
+      <label>Booking<select id="dSel"></select></label>
+      <label>Hall damaged?<select id="dDamaged"><option value="false">No</option><option value="true">Yes</option></select></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label>Notes<textarea id="dNotes" rows="2" maxlength="500"></textarea></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="b" id="dSave">Save report</button>
+      <span class="empty" id="dHint"></span>
+    </div>
+  </div>
+  <div class="card"><h2>All reports</h2><div id="damageTable"></div></div>
+</section>
+
+</main>
+<div id="toast"></div>
+
+<script src="js/staff-app.js"></script>
+</body>
+</html>
