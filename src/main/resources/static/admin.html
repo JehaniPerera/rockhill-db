@@ -9,7 +9,7 @@
         *{box-sizing:border-box}
         [hidden]{display:none !important}
         body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
-        main{max-width:900px;margin:0 auto;padding:28px 16px 48px}
+        main{max-width:1000px;margin:0 auto;padding:28px 16px 48px}
         .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
         h1{font-size:22px;margin:0 0 4px}
         .sub{color:var(--muted);margin:0 0 20px}
@@ -22,9 +22,11 @@
         .filters{margin-bottom:12px}
         button,.btnlink{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
         button.secondary,.btnlink{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+        button.small{padding:4px 10px;font-size:13px}
+        button.danger{background:#fff;color:var(--err);border:1px solid var(--err)}
         button:disabled{opacity:.45;cursor:not-allowed}
         button:focus-visible,select:focus-visible,input:focus-visible,.btnlink:focus-visible{outline:3px solid #7fb5a8;outline-offset:2px}
-        #msg{margin-top:12px;font-weight:600;min-height:1.5em}
+        #msg,#pmsg{margin-top:12px;font-weight:600;min-height:1.5em}
         #hint{margin-top:8px;color:var(--muted);font-size:14px}
         .ok{color:var(--ok)} .err{color:var(--err)}
         .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600}
@@ -36,11 +38,14 @@
         .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;text-align:left;color:var(--ink);font-weight:400}
         .card b{display:block;font-size:22px}
         .card span{color:var(--muted);font-size:13px}
-        .alert{background:#f8e0e0;color:var(--err);border:1px solid #e5b4b4;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-weight:600}
+        .alert{background:#f8e0e0;color:var(--err);border:1px solid #e5b4b4;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-weight:600}
+        .alert.warn{background:#fdf0d5;color:#8a5a00;border-color:#ecd49a}
         .wrap{overflow-x:auto}
         table{width:100%;border-collapse:collapse}
         th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
         th{color:var(--muted);font-weight:600}
+        td a{color:var(--accent);font-weight:600;margin-right:6px}
+        .nowrap{white-space:nowrap}
         tr.row{cursor:pointer} tr.row:hover{background:#f7f9fb} tr.sel{background:#e9f3f0}
         .empty{color:var(--muted)}
     </style>
@@ -55,8 +60,20 @@
         <button id="btnLogout" class="secondary" onclick="logout()" hidden>Log out</button>
     </div>
 
+    <div id="alertPending" class="alert warn" hidden></div>
     <div id="alert" class="alert" hidden></div>
     <div id="cards" class="cards"></div>
+
+    <section class="panel" id="pendingPanel">
+        <h2>Payments awaiting approval</h2>
+        <div class="wrap">
+            <table>
+                <thead><tr><th>Proof</th><th>Booking</th><th>Customer</th><th>Payment</th><th>Amount due</th><th>Bank reference</th><th>Submitted</th><th>Review</th></tr></thead>
+                <tbody id="pending"></tbody>
+            </table>
+        </div>
+        <div id="pmsg" role="status"></div>
+    </section>
 
     <section class="panel">
         <h2>Bookings</h2>
@@ -91,8 +108,18 @@
         <div id="msg" role="status"></div>
     </section>
 
+    <section class="panel" id="proofPanel" hidden>
+        <h2>Payment proofs for this booking</h2>
+        <div class="wrap">
+            <table>
+                <thead><tr><th>Proof</th><th>Payment</th><th>Amount due</th><th>Reference</th><th>Status</th><th>Submitted</th><th>Reviewed</th><th>Rejection reason</th><th>Receipt</th></tr></thead>
+                <tbody id="proofs"></tbody>
+            </table>
+        </div>
+    </section>
+
     <section class="panel" id="historyPanel" hidden>
-        <h2>Payment history</h2>
+        <h2>Payment history (approved payments)</h2>
         <div class="wrap">
             <table>
                 <thead><tr><th>Receipt</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th><th>Refund</th></tr></thead>
@@ -108,18 +135,20 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const STATE_LABEL = {CANCELLED:'Cancelled', FULLY_PAID:'Fully Paid', OVERDUE:'Overdue', DEPOSIT_PAID:'Deposit paid - balance pending', NOT_PAID:'Not paid yet'};
     const BADGE = {CANCELLED:'b-red', FULLY_PAID:'b-green', OVERDUE:'b-red', DEPOSIT_PAID:'b-amber', NOT_PAID:'b-grey'};
-    let bookings = [], currentId = null;
+    const PROOF_BADGE = {'Pending Approval':'b-amber', 'Approved':'b-green', 'Rejected':'b-red'};
+    let bookings = [], pendingProofs = [], currentId = null;
 
     function say(text, cls) { const m = $('msg'); m.textContent = text; m.className = cls || ''; }
+    function sayPending(text, cls) { const m = $('pmsg'); m.textContent = text; m.className = cls || ''; }
 
-    async function call(path, method) {
-        const res = await fetch(path, { method: method || 'GET' });
+    async function call(path, method, body) {
+        const res = await fetch(path, { method: method || 'GET', body });
         if (res.status === 401) {                 // session ended: back to the login page
             location.href = 'login.html';
             throw new Error('Please log in again.');
         }
         const text = await res.text();
-        if (!res.ok) throw new Error(res.status + ' on ' + path + (text ? ' - ' + text.slice(0, 120) : ''));
+        if (!res.ok) throw new Error(text ? text.slice(0, 200) : ('Error ' + res.status));
         try { return JSON.parse(text); } catch (e) { return text; }
     }
 
@@ -132,6 +161,73 @@
     fetch('/api/auth/status').then(r => r.ok ? r.json() : null).then(s => {
         if (s && s.loggedIn) $('btnLogout').hidden = false;
     }).catch(() => {});
+
+    // ---------------------------------------------------------- payment proofs
+
+    function hasPending(b) { return pendingProofs.some(p => p.booking_id === b.booking_id); }
+
+    async function loadPending() {
+        const body = $('pending');
+        try {
+            const rows = await call('/api/payment-proofs/pending');
+            if (!Array.isArray(rows)) throw new Error('Unexpected reply');
+            pendingProofs = rows;
+        } catch (e) {
+            pendingProofs = [];
+            body.innerHTML = `<tr><td colspan="8" class="err">Could not load pending payments: ${esc(e.message)}</td></tr>`;
+            return;
+        }
+        body.innerHTML = pendingProofs.length ? pendingProofs.map(p => `<tr>
+            <td>#${p.proof_id}</td><td>#${p.booking_id}</td><td>${esc(p.customer_name)}</td>
+            <td>${esc(p.payment_type)}</td><td>${rs(p.amount)}</td><td>${esc(p.bank_reference || '-')}</td><td>${esc(p.submitted_at)}</td>
+            <td class="nowrap"><a href="/api/payment-proofs/file/${p.proof_id}" target="_blank" rel="noopener">View receipt</a>
+                <button class="small" onclick="approveProof(${p.proof_id})">Approve</button>
+                <button class="small danger" onclick="rejectProof(${p.proof_id})">Reject</button></td></tr>`).join('')
+            : '<tr><td colspan="8" class="empty">No payments are waiting for approval.</td></tr>';
+    }
+
+    async function approveProof(id) {
+        if (!confirm('Approve this payment? It will be recorded and the booking will be updated.')) return;
+        try {
+            sayPending(await call('/api/payment-proofs/approve/' + id, 'POST'), 'ok');
+        } catch (e) {
+            sayPending(e.message, 'err');
+            return;
+        }
+        await reload();
+    }
+
+    async function rejectProof(id) {
+        const reason = prompt('Why are you rejecting this payment? The customer will see this reason.');
+        if (reason === null) return;                       // cancelled
+        if (!reason.trim()) { sayPending('Please type a reason, so the customer knows what to correct.', 'err'); return; }
+        try {
+            const r = await call('/api/payment-proofs/reject/' + id, 'POST', new URLSearchParams({ reason: reason.trim() }));
+            sayPending(r, 'ok');
+        } catch (e) {
+            sayPending(e.message, 'err');
+            return;
+        }
+        await reload();
+    }
+
+    async function loadProofs(bookingId) {
+        const body = $('proofs');
+        try {
+            const rows = await call('/api/payment-proofs/booking/' + bookingId);
+            if (!Array.isArray(rows)) throw new Error('Unexpected reply');
+            body.innerHTML = rows.length ? rows.map(p => `<tr>
+                <td>#${p.proof_id}</td><td>${esc(p.payment_type)}</td><td>${rs(p.amount)}</td><td>${esc(p.bank_reference || '-')}</td>
+                <td><span class="badge ${PROOF_BADGE[p.status] || 'b-grey'}">${esc(p.status)}</span></td>
+                <td>${esc(p.submitted_at)}</td><td>${esc(p.reviewed_at || '-')}</td><td>${esc(p.rejection_reason || '-')}</td>
+                <td><a href="/api/payment-proofs/file/${p.proof_id}" target="_blank" rel="noopener">View</a></td></tr>`).join('')
+                : '<tr><td colspan="9" class="empty">No payment proofs for this booking.</td></tr>';
+        } catch (e) {
+            body.innerHTML = `<tr><td colspan="9" class="err">Could not load proofs: ${esc(e.message)}</td></tr>`;
+        }
+    }
+
+    // ---------------------------------------------------------------- bookings
 
     function stateOf(b) {
         if (b.status === 'Cancelled') return 'CANCELLED';
@@ -159,14 +255,20 @@
         const card = (label, value, filter) =>
             `<button class="card" onclick="setFilter('${filter}')"><b>${value}</b><span>${label}</span></button>`;
         $('cards').innerHTML =
+            `<button class="card" onclick="document.getElementById('pendingPanel').scrollIntoView({behavior:'smooth'})"><b>${pendingProofs.length}</b><span>Awaiting approval</span></button>` +
             card('Fully paid', count('FULLY_PAID'), 'FULLY_PAID') +
             card('Deposit paid', count('DEPOSIT_PAID'), 'DEPOSIT_PAID') +
             card('Not paid yet', count('NOT_PAID'), 'NOT_PAID') +
             card('Overdue', count('OVERDUE'), 'OVERDUE') +
             `<div class="card" style="cursor:default"><b>${rs(outstanding)}</b><span>Outstanding balances (confirmed bookings)</span></div>`;
+
         const n = count('OVERDUE');
         $('alert').hidden = !n;
         $('alert').textContent = n + ' booking(s) have an overdue balance. Click "Overdue" above to see them.';
+
+        const p = pendingProofs.length;
+        $('alertPending').hidden = !p;
+        $('alertPending').textContent = p + ' payment proof(s) are waiting for your approval. Review them in "Payments awaiting approval".';
     }
 
     function visible() {
@@ -183,7 +285,8 @@
             const s = stateOf(b);
             return `<tr class="row ${b.booking_id === currentId ? 'sel' : ''}" onclick="pick(${b.booking_id})">
                 <td>#${b.booking_id}</td><td>${esc(b.customer_name)}</td><td>${b.event_date}</td><td>${esc(b.status)}</td>
-                <td><span class="badge ${BADGE[s]}">${STATE_LABEL[s]}</span></td><td>${remainingText(b)}</td></tr>`;
+                <td><span class="badge ${BADGE[s]}">${STATE_LABEL[s]}</span>${hasPending(b) ? ' <span class="badge b-amber">Proof pending</span>' : ''}</td>
+                <td>${remainingText(b)}</td></tr>`;
         }).join('') : '<tr><td colspan="6" class="empty">No bookings match.</td></tr>';
     }
 
@@ -206,8 +309,7 @@
 
     async function showBooking() {
         const b = bookings.find(x => x.booking_id === currentId);
-        $('detailPanel').hidden = !b;
-        $('historyPanel').hidden = !b;
+        ['detailPanel', 'proofPanel', 'historyPanel'].forEach(id => $(id).hidden = !b);
         if (!b) return;
 
         const depositPaid = Number(b.deposit_paid) > 0;
@@ -230,9 +332,10 @@
         let hint = '';
         if (cancelled) hint = 'Cancelled booking: no invoice. You can process the deposit outcome.';
         else if (hasInvoice) hint = 'Invoice already issued. Use "View invoice" to open or print it.';
-        else if (!balancePaid) hint = 'An invoice can only be generated after the balance is paid.';
+        else if (!balancePaid) hint = 'An invoice can only be generated after the balance payment is approved.';
         else hint = 'Balance paid. You can generate the invoice now.';
         if (overdue) hint += ' The balance is overdue: cancel the booking on the booking page, then process the deposit outcome here.';
+        if (overdue && hasPending(b)) hint += ' A payment proof is waiting for approval: review it before cancelling for non-payment.';
         if (refundDone) hint += ' Deposit outcome: ' + b.deposit_refund_status + '.';
         $('hint').textContent = hint;
 
@@ -245,13 +348,13 @@
             <dt>Customer</dt><dd>${esc(b.customer_name)}</dd>
             <dt>Event</dt><dd>${esc(b.event_type)} on ${b.event_date} (${b.guest_count} guests)</dd>
             <dt>Booking status</dt><dd>${esc(b.status)}</dd>
-            <dt>Payment status</dt><dd><span class="badge ${BADGE[s]}">${STATE_LABEL[s]}</span></dd>
+            <dt>Payment status</dt><dd><span class="badge ${BADGE[s]}">${STATE_LABEL[s]}</span>${hasPending(b) ? ' <span class="badge b-amber">Proof pending</span>' : ''}</dd>
             <dt>Total price</dt><dd>${rs(b.total_price)}</dd>
-            <dt>Paid so far</dt><dd>${rs(b.paid_total)}</dd>
+            <dt>Paid so far (approved)</dt><dd>${rs(b.paid_total)}</dd>
             <dt>Balance remaining</dt><dd>${remainingText(b)}</dd>
             ${dueRow}
             <dt>Venue damaged</dt><dd>${b.venue_damaged ? 'Yes' : 'No'}</dd></dl>`;
-        await loadHistory(b.booking_id);
+        await Promise.all([loadHistory(b.booking_id), loadProofs(b.booking_id)]);
     }
 
     async function loadHistory(id) {
@@ -263,7 +366,7 @@
                 <td><a href="receipt.html?payment=${p.payment_id}" target="_blank">${esc(p.receipt_no)}</a></td>
                 <td>${esc(p.payment_type)}</td><td>${rs(p.amount)}</td>
                 <td>${p.payment_date}</td><td>${esc(p.payment_status)}</td><td>${esc(p.refund_status)}</td></tr>`).join('')
-                : '<tr><td colspan="6" class="empty">No payments recorded for this booking.</td></tr>';
+                : '<tr><td colspan="6" class="empty">No approved payments for this booking.</td></tr>';
         } catch (e) {
             body.innerHTML = `<tr><td colspan="6" class="err">Could not load history: ${esc(e.message)}</td></tr>`;
         }
@@ -279,10 +382,15 @@
             say(e.message, 'err');
             return;
         }
+        await reload();
+    }
+
+    async function reload() {
+        await loadPending();     // first, because the cards and the booking list use it
         await loadBookings();
     }
 
-    loadBookings();
+    reload();
 </script>
 </body>
 </html>
