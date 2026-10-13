@@ -18,7 +18,26 @@ public class PaymentRepository {
 
     // total of the approved Balance payments (installments) of booking b
     private static final String BALANCE_PAID_SQL =
-            "COALESCE((SELECT SUM(bp.amount) FROM Payment bp WHERE bp.booking_id = b.id AND bp.payment_type = 'Balance'), 0)";
+            "COALESCE((SELECT SUM(bp.amount) FROM Payment bp WHERE bp.booking_id = b.booking_id AND bp.payment_type = 'Balance'), 0)";
+
+    // The booking table (Function 1) no longer stores a total price, so it is worked out here from the
+    // booking's package/menu and its add-on and decor choices (Function 2). Use it on a booking aliased "b".
+    //   wedding : package price for the guest-count bracket
+    //   other   : menu price per guest x guests, plus the Rs. 35,000 hall charge when under 150 guests
+    //   both    : + add-ons and decor (quantity x charged_amount)
+    static final String TOTAL_PRICE_SQL =
+            "(COALESCE((SELECT t.total_price FROM wedding_booking wb JOIN package_pricing_tier t " +
+                    "ON t.package_id = wb.package_id AND b.guest_count BETWEEN t.min_guests AND t.max_guests " +
+                    "WHERE wb.booking_id = b.booking_id LIMIT 1), 0) " +
+                    "+ COALESCE((SELECT m.price_per_guest * b.guest_count FROM other_event_booking ob " +
+                    "JOIN menu m ON m.menu_id = ob.menu_id WHERE ob.booking_id = b.booking_id), 0) " +
+                    "+ CASE WHEN UPPER(b.event_type) = 'OTHER' AND b.guest_count < 150 THEN 35000 ELSE 0 END " +
+                    "+ COALESCE((SELECT SUM(a.quantity * a.charged_amount) FROM booking_add_on a WHERE a.booking_id = b.booking_id), 0) " +
+                    "+ COALESCE((SELECT SUM(d.quantity * d.charged_amount) FROM booking_decor_selection d WHERE d.booking_id = b.booking_id), 0))";
+
+    // 'WEDDING' in the database -> 'Wedding' on the pages
+    static final String EVENT_TYPE_SQL =
+            "CONCAT(UPPER(LEFT(b.event_type, 1)), LOWER(SUBSTRING(b.event_type, 2)))";
 
     private final JdbcTemplate jdbc;
 
@@ -28,7 +47,7 @@ public class PaymentRepository {
 
     public Optional<BookingInfo> findBooking(int bookingId) {
         List<BookingInfo> rows = jdbc.query(
-                "SELECT id AS booking_id, status, total_price, venue_damaged FROM Booking WHERE id = ?",
+                "SELECT b.booking_id, b.status, " + TOTAL_PRICE_SQL + " AS total_price, b.venue_damaged FROM Booking b WHERE b.booking_id = ?",
                 (rs, i) -> new BookingInfo(rs.getInt("booking_id"), normalizeStatus(rs.getString("status")),
                         rs.getBigDecimal("total_price"), rs.getBoolean("venue_damaged")),
                 bookingId);
@@ -47,7 +66,7 @@ public class PaymentRepository {
     // true once the administrator has approved the date for this booking
     public boolean isAvailabilityApproved(int bookingId) {
         Boolean approved = jdbc.queryForObject(
-                "SELECT availability_approved FROM Booking WHERE id = ?",
+                "SELECT (confirmed_at IS NOT NULL) FROM Booking WHERE booking_id = ?",
                 Boolean.class, bookingId);
         return approved != null && approved;
     }
@@ -55,7 +74,7 @@ public class PaymentRepository {
     // true when today is after the balance due date (the event is less than 14 days away)
     public boolean isWithinBalanceWindow(int bookingId) {
         Integer days = jdbc.queryForObject(
-                "SELECT DATEDIFF(event_date, CURDATE()) FROM Booking WHERE id = ?",
+                "SELECT DATEDIFF(event_date, CURDATE()) FROM Booking WHERE booking_id = ?",
                 Integer.class, bookingId);
         return days != null && days < 14;
     }
@@ -101,7 +120,8 @@ public class PaymentRepository {
     }
 
     public void confirmBooking(int bookingId) {
-        jdbc.update("UPDATE Booking SET status = 'Confirmed' WHERE id = ? AND UPPER(status) = 'PENDING'", bookingId);
+        jdbc.update("UPDATE Booking SET status = 'CONFIRMED', deposit_received_at = NOW(), deposit_confirmed_by = 'AUTO', " +
+                "last_activity_at = NOW() WHERE booking_id = ? AND UPPER(status) = 'PENDING'", bookingId);
     }
 
     public void updateDepositRefundStatus(int bookingId, Payment.RefundStatus status) {
@@ -117,32 +137,32 @@ public class PaymentRepository {
 
     public List<Map<String, Object>> findBookingSummaries() {
         return jdbc.queryForList(
-                "SELECT b.id AS booking_id, c.name AS customer_name, b.event_type, " +
+                "SELECT b.booking_id AS booking_id, c.name AS customer_name, " + EVENT_TYPE_SQL + " AS event_type, " +
                         "DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
                         "DATE_FORMAT(GREATEST(DATE_SUB(b.event_date, INTERVAL 14 DAY), CURDATE()), '%Y-%m-%d') AS balance_due_date, " +
                         "(DATEDIFF(b.event_date, CURDATE()) < 14) AS late_booking, " +
                         "DATE_FORMAT(DATE_SUB(b.event_date, INTERVAL 14 DAY), '%Y-%m-%d') AS due_date, " +
                         "(b.status IN ('CONFIRMED','COMPLETED') AND CURDATE() > DATE_SUB(b.event_date, INTERVAL 14 DAY) " +
-                        "AND " + BALANCE_PAID_SQL + " < b.total_price) AS is_overdue, " +
-                        "b.guest_count, CONCAT(UPPER(LEFT(b.status, 1)), LOWER(SUBSTRING(b.status, 2))) AS status, b.total_price, b.venue_damaged, b.availability_approved, " +
-                        "(SELECT p.refund_status FROM Payment p WHERE p.booking_id = b.id AND p.payment_type = 'Deposit' ORDER BY p.payment_id LIMIT 1) AS deposit_refund_status, " +
-                        "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.id AND p.payment_type = 'Deposit') AS deposit_paid, " +
-                        "(" + BALANCE_PAID_SQL + " >= b.total_price) AS balance_paid, " +
+                        "AND " + BALANCE_PAID_SQL + " < " + TOTAL_PRICE_SQL + ") AS is_overdue, " +
+                        "b.guest_count, CONCAT(UPPER(LEFT(b.status, 1)), LOWER(SUBSTRING(b.status, 2))) AS status, " + TOTAL_PRICE_SQL + " AS total_price, b.venue_damaged, (b.confirmed_at IS NOT NULL) AS availability_approved, " +
+                        "(SELECT p.refund_status FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Deposit' ORDER BY p.payment_id LIMIT 1) AS deposit_refund_status, " +
+                        "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.booking_id AND p.payment_type = 'Deposit') AS deposit_paid, " +
+                        "(" + BALANCE_PAID_SQL + " >= " + TOTAL_PRICE_SQL + ") AS balance_paid, " +
                         BALANCE_PAID_SQL + " AS balance_paid_amount, " +
-                        "GREATEST(b.total_price - " + BALANCE_PAID_SQL + ", 0) AS balance_remaining, " +
-                        "(SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.booking_id = b.id) AS paid_total, " +
-                        "(SELECT COUNT(*) FROM Invoice i WHERE i.booking_id = b.id) AS has_invoice " +
+                        "GREATEST(" + TOTAL_PRICE_SQL + " - " + BALANCE_PAID_SQL + ", 0) AS balance_remaining, " +
+                        "(SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.booking_id = b.booking_id) AS paid_total, " +
+                        "(SELECT COUNT(*) FROM Invoice i WHERE i.booking_id = b.booking_id) AS has_invoice " +
                         "FROM Booking b JOIN Customer c ON b.customer_id = c.id " +
-                        "ORDER BY b.id");
+                        "ORDER BY b.booking_id");
     }
 
     public Optional<Map<String, Object>> findInvoiceDetails(int bookingId) {
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT i.invoice_id, i.total_amount, DATE_FORMAT(i.issue_date, '%Y-%m-%d') AS issue_date, " +
-                        "b.id AS booking_id, b.event_type, DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, b.guest_count, " +
+                        "b.booking_id AS booking_id, " + EVENT_TYPE_SQL + " AS event_type, DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, b.guest_count, " +
                         "c.name AS customer_name, c.phone AS customer_phone " +
                         "FROM Invoice i " +
-                        "JOIN Booking b ON i.booking_id = b.id " +
+                        "JOIN Booking b ON i.booking_id = b.booking_id " +
                         "JOIN Customer c ON b.customer_id = c.id " +
                         "WHERE i.booking_id = ?", bookingId);
         return rows.stream().findFirst();
@@ -155,14 +175,14 @@ public class PaymentRepository {
                 "SELECT p.payment_id, CONCAT('RCPT-', LPAD(p.payment_id, 5, '0')) AS receipt_no, " +
                         "p.booking_id, p.amount, p.payment_type, p.payment_status, " +
                         "DATE_FORMAT(p.payment_date, '%Y-%m-%d') AS payment_date, " +
-                        "b.event_type, DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
+                        EVENT_TYPE_SQL + " AS event_type, DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
                         "c.name AS customer_name, c.phone AS customer_phone, " +
                         "CASE WHEN b.status = 'CANCELLED' THEN 0 " +
-                        "ELSE GREATEST(b.total_price - COALESCE((SELECT SUM(x.amount) FROM Payment x " +
-                        "WHERE x.booking_id = b.id AND x.payment_type = 'Balance' AND x.payment_id <= p.payment_id), 0), 0) " +
+                        "ELSE GREATEST(" + TOTAL_PRICE_SQL + " - COALESCE((SELECT SUM(x.amount) FROM Payment x " +
+                        "WHERE x.booking_id = b.booking_id AND x.payment_type = 'Balance' AND x.payment_id <= p.payment_id), 0), 0) " +
                         "END AS balance_remaining " +
                         "FROM Payment p " +
-                        "JOIN Booking b ON p.booking_id = b.id " +
+                        "JOIN Booking b ON p.booking_id = b.booking_id " +
                         "JOIN Customer c ON b.customer_id = c.id " +
                         "WHERE p.payment_id = ?", paymentId);
         return rows.stream().findFirst();

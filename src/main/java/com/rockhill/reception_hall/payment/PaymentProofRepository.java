@@ -81,7 +81,7 @@ public class PaymentProofRepository {
                 "SELECT pp.proof_id, pp.booking_id, c.name AS customer_name, pp.payment_type, pp.amount, pp.bank_reference, " +
                         "DATE_FORMAT(pp.submitted_at, '%Y-%m-%d %H:%i') AS submitted_at " +
                         "FROM PaymentProof pp " +
-                        "JOIN Booking b ON pp.booking_id = b.id " +
+                        "JOIN Booking b ON pp.booking_id = b.booking_id " +
                         "JOIN Customer c ON b.customer_id = c.id " +
                         "WHERE pp.status = 'Pending Approval' ORDER BY pp.proof_id");
     }

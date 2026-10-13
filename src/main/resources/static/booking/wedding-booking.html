@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wedding Booking</title>
+    <link rel="stylesheet" href="/booking/css/booking-theme.css">
+</head>
+<body>
+<header>
+    <h1>Rockhill Reception Hall &amp; Caterers</h1>
+    <nav>
+        <a href="/booking/booking-index.html">Home</a>
+        <a href="/booking/my-bookings.html">My bookings</a>
+    </nav>
+</header>
+<main>
+    <div class="card">
+        <h2>Wedding booking</h2>
+        <p>Fill in your details and check that your date is free. Next you will choose your wedding package,
+            add-ons and decor, and then send your booking request to the hall team.</p>
+
+        <div class="row">
+            <div><label for="customerName">Your name</label><input id="customerName" maxlength="100"></div>
+            <div><label for="customerPhone">Phone</label><input id="customerPhone" maxlength="15" placeholder="0771234567 or +94771234567"></div>
+        </div>
+        <label for="customerEmail">Email</label><input id="customerEmail" type="email" maxlength="100">
+
+        <div class="row">
+            <div><label for="eventDate">Wedding date</label><input id="eventDate" type="date"></div>
+            <div><label for="guestCount">Number of guests (100 - 300)</label><input id="guestCount" type="number" min="1"></div>
+        </div>
+
+        <button class="btn secondary" id="checkBtn" type="button">Check availability</button>
+        <button class="btn" id="continueBtn" type="button">Continue to package selection</button>
+        <div id="suggestions" style="margin-top:10px"></div>
+        <div id="msg" class="msg"></div>
+    </div>
+</main>
+<script src="/booking/js/booking-helpers.js"></script>
+<script src="/booking/js/booking-flow.js"></script>
+<script>initBookingPage('WEDDING');</script>
+</body>
+</html>
