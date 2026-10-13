@@ -48,6 +48,9 @@
         .nowrap{white-space:nowrap}
         tr.row{cursor:pointer} tr.row:hover{background:#f7f9fb} tr.sel{background:#e9f3f0}
         .empty{color:var(--muted)}
+        .remind-msg{font-weight:600;min-width:240px}
+        tr.r-overdue{background:#fdf1f1} tr.r-pending{background:#fffaf0}
+        .toggle{color:var(--muted);font-size:14px;display:inline-flex;gap:6px;align-items:center}
     </style>
 </head>
 <body>
@@ -60,26 +63,18 @@
         <button id="btnLogout" class="secondary" onclick="logout()" hidden>Log out</button>
     </div>
 
-    <div id="alertCalls" class="alert warn" hidden></div>
     <div id="alertPending" class="alert warn" hidden></div>
     <div id="alert" class="alert" hidden></div>
+    <div id="alertCalls" class="alert warn" hidden></div>
     <div id="cards" class="cards"></div>
 
     <section class="panel" id="reminderPanel">
-        <h2>Balance payment call reminders</h2>
-        <p class="muted" style="margin:0 0 10px">The balance is due 14 days before the event. You are reminded to call the customer 3 days before that deadline (17 days before the event). The system does not call or message the customer.</p>
-        <div class="filters">
-            <select id="reminderFilter" onchange="renderReminders()" aria-label="Filter reminders">
-                <option value="ACTIVE">Active (Pending and Overdue)</option>
-                <option value="Pending">Pending</option>
-                <option value="Overdue">Overdue</option>
-                <option value="Completed">Completed (balance paid)</option>
-                <option value="ALL">All</option>
-            </select>
-        </div>
+        <h2>Customer call reminders - balance payment</h2>
+        <p class="sub" style="margin-bottom:10px">Balance is due 14 days before the event. A reminder appears 17 days before the event, until the balance is paid.</p>
+        <label class="toggle"><input id="showDone" type="checkbox" onchange="loadReminders()"> Show completed reminders</label>
         <div class="wrap">
             <table>
-                <thead><tr><th>Status</th><th>Booking</th><th>Customer</th><th>Phone</th><th>Event date</th><th>Outstanding balance</th><th>Pay by</th><th>What to do</th></tr></thead>
+                <thead><tr><th>Status</th><th>Customer</th><th>Contact</th><th>Booking</th><th>Event date</th><th>Balance outstanding</th><th>Pay by</th><th>Action needed</th></tr></thead>
                 <tbody id="reminders"></tbody>
             </table>
         </div>
@@ -157,7 +152,8 @@
     const STATE_LABEL = {CANCELLED:'Cancelled', FULLY_PAID:'Fully Paid', OVERDUE:'Overdue', DEPOSIT_PAID:'Deposit paid - balance pending', NOT_PAID:'Not paid yet'};
     const BADGE = {CANCELLED:'b-red', FULLY_PAID:'b-green', OVERDUE:'b-red', DEPOSIT_PAID:'b-amber', NOT_PAID:'b-grey'};
     const PROOF_BADGE = {'Pending Approval':'b-amber', 'Approved':'b-green', 'Rejected':'b-red'};
-    let bookings = [], pendingProofs = [], currentId = null;
+    const REMINDER_BADGE = {Pending:'b-amber', Overdue:'b-red', Completed:'b-green'};
+    let bookings = [], pendingProofs = [], reminders = [], currentId = null;
 
     function say(text, cls) { const m = $('msg'); m.textContent = text; m.className = cls || ''; }
     function sayPending(text, cls) { const m = $('pmsg'); m.textContent = text; m.className = cls || ''; }
@@ -169,59 +165,19 @@
             throw new Error('Please log in again.');
         }
         const text = await res.text();
-        if (!res.ok) throw new Error(errorText(text, res.status));
+        if (!res.ok) throw new Error(text ? text.slice(0, 200) : ('Error ' + res.status));
         try { return JSON.parse(text); } catch (e) { return text; }
     }
 
-    // the portal sends errors as {"error":"..."} (access denied) or plain text (business rules)
-    function errorText(text, status) {
-        let msg = text;
-        try { const j = JSON.parse(text); if (j && j.error) msg = j.error; } catch (e) { /* plain text */ }
-        return msg ? String(msg).slice(0, 200) : ('Error ' + status);
-    }
-
     async function logout() {
-        try { await fetch('/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
-        location.href = 'login.html?logout';
+        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
+        location.href = 'login.html';
     }
 
-    // show the Log out button (and who is signed in) from the portal login
-    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(u => {
-        if (u) {
-            $('btnLogout').hidden = false;
-            $('btnLogout').textContent = 'Log out (' + (u.fullName || u.email) + ')';
-        }
+    // the Log out button only appears when the login feature exists and you are logged in
+    fetch('/api/auth/status').then(r => r.ok ? r.json() : null).then(s => {
+        if (s && s.loggedIn) $('btnLogout').hidden = false;
     }).catch(() => {});
-
-    // ------------------------------------------------- balance call reminders
-
-    const REMINDER_BADGE = {'Pending':'b-amber', 'Overdue':'b-red', 'Completed':'b-green'};
-    let reminders = [];
-
-    async function loadReminders() {
-        try {
-            const rows = await call('/api/payments/reminders');
-            if (!Array.isArray(rows)) throw new Error('Unexpected reply');
-            reminders = rows;
-        } catch (e) {
-            reminders = [];
-            $('reminders').innerHTML = `<tr><td colspan="8" class="err">Could not load reminders: ${esc(e.message)}</td></tr>`;
-            return;
-        }
-        renderReminders();
-    }
-
-    function renderReminders() {
-        const f = $('reminderFilter').value;
-        const rows = reminders.filter(r => f === 'ALL' || (f === 'ACTIVE' ? r.status !== 'Completed' : r.status === f));
-        $('reminders').innerHTML = rows.length ? rows.map(r => `<tr class="row" onclick="pick(${r.booking_id})">
-            <td><span class="badge ${REMINDER_BADGE[r.status] || 'b-grey'}">${esc(r.status)}</span></td>
-            <td>#${r.booking_id}</td><td>${esc(r.customer_name)}</td>
-            <td class="nowrap"><a href="tel:${esc(r.customer_phone)}">${esc(r.customer_phone)}</a></td>
-            <td>${esc(r.event_date)}</td><td>${rs(r.balance_outstanding)}</td><td>${esc(r.deadline_date)}</td>
-            <td><b>${esc(r.message)}</b></td></tr>`).join('')
-            : '<tr><td colspan="8" class="empty">No reminders to show.</td></tr>';
-    }
 
     // ---------------------------------------------------------- payment proofs
 
@@ -288,6 +244,43 @@
         }
     }
 
+    // ----------------------------------------------------- balance call reminders
+
+    function renderReminders() {
+        const body = $('reminders');
+        const active = reminders.filter(r => r.status !== 'Completed');
+        const calls = reminders.filter(r => r.status === 'Pending').length;
+        $('alertCalls').hidden = !calls;
+        $('alertCalls').textContent = calls + ' customer(s) need a call about their balance payment. See "Customer call reminders" below.';
+
+        body.innerHTML = reminders.length ? reminders.map(r => `<tr class="row r-${r.status.toLowerCase()}" onclick="pickReminder(${r.booking_id})">
+            <td><span class="badge ${REMINDER_BADGE[r.status] || 'b-grey'}">${esc(r.status)}</span>${r.status !== 'Completed' && pendingProofs.some(p => p.booking_id === r.booking_id) ? ' <span class="badge b-amber">Proof pending</span>' : ''}</td>
+            <td>${esc(r.customer_name)}</td><td class="nowrap">${esc(r.customer_phone || '-')}</td>
+            <td>#${r.booking_id}</td><td>${r.event_date}</td>
+            <td>${rs(r.outstanding_balance)}</td><td>${r.balance_deadline}</td>
+            <td class="remind-msg">${esc(r.message)}</td></tr>`).join('')
+            : '<tr><td colspan="8" class="empty">No customers need a balance reminder call right now.</td></tr>';
+    }
+
+    async function loadReminders() {
+        try {
+            const rows = await call('/api/balance-reminders?includeCompleted=' + $('showDone').checked);
+            if (!Array.isArray(rows)) throw new Error('Unexpected reply');
+            reminders = rows;
+        } catch (e) {
+            reminders = [];
+            $('reminders').innerHTML = `<tr><td colspan="8" class="err">Could not load reminders: ${esc(e.message)}</td></tr>`;
+            return;
+        }
+        renderReminders();
+    }
+
+    // clicking a reminder opens that booking's details further down the page
+    function pickReminder(id) {
+        pick(id);
+        $('detailPanel').scrollIntoView({behavior: 'smooth'});
+    }
+
     // ---------------------------------------------------------------- bookings
 
     function stateOf(b) {
@@ -300,12 +293,12 @@
 
     // money still owed on confirmed bookings whose balance is unpaid
     function owing(b) {
-        return (b.status === 'Confirmed' && Number(b.balance_paid) === 0) ? Number(b.total_price) : 0;
+        return b.status === 'Confirmed' ? Number(b.balance_remaining) : 0;
     }
 
     function remainingText(b) {
         if (b.status === 'Cancelled') return '-';
-        return Number(b.balance_paid) > 0 ? rs(0) : rs(b.total_price);
+        return rs(b.balance_remaining);
     }
 
     function setFilter(v) { $('stateFilter').value = v; renderList(); }
@@ -315,9 +308,7 @@
         const outstanding = bookings.reduce((sum, b) => sum + owing(b), 0);
         const card = (label, value, filter) =>
             `<button class="card" onclick="setFilter('${filter}')"><b>${value}</b><span>${label}</span></button>`;
-        const calls = reminders.filter(r => r.status !== 'Completed').length;
         $('cards').innerHTML =
-            `<button class="card" onclick="document.getElementById('reminderPanel').scrollIntoView({behavior:'smooth'})"><b>${calls}</b><span>Calls to make (balance)</span></button>` +
             `<button class="card" onclick="document.getElementById('pendingPanel').scrollIntoView({behavior:'smooth'})"><b>${pendingProofs.length}</b><span>Awaiting approval</span></button>` +
             card('Fully paid', count('FULLY_PAID'), 'FULLY_PAID') +
             card('Deposit paid', count('DEPOSIT_PAID'), 'DEPOSIT_PAID') +
@@ -328,9 +319,6 @@
         const n = count('OVERDUE');
         $('alert').hidden = !n;
         $('alert').textContent = n + ' booking(s) have an overdue balance. Click "Overdue" above to see them.';
-
-        $('alertCalls').hidden = !calls;
-        $('alertCalls').textContent = calls + ' customer(s) need a reminder call about their balance payment. See "Balance payment call reminders" below.';
 
         const p = pendingProofs.length;
         $('alertPending').hidden = !p;
@@ -453,8 +441,7 @@
 
     async function reload() {
         await loadPending();     // first, because the cards and the booking list use it
-        await loadReminders();   // also used by the cards
-        await loadBookings();
+        await Promise.all([loadBookings(), loadReminders()]);
     }
 
     reload();

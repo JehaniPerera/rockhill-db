@@ -16,20 +16,8 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
-    @PostMapping("/deposit/{bookingId}")
-    public Payment payDeposit(@PathVariable int bookingId) {
-        return paymentService.recordDeposit(bookingId);
-    }
-
-    @PostMapping("/balance/{bookingId}")
-    public Payment payBalance(@PathVariable int bookingId) {
-        return paymentService.recordBalance(bookingId);
-    }
-
-    @PostMapping("/full/{bookingId}")
-    public String payFull(@PathVariable int bookingId) {
-        return paymentService.recordFullPayment(bookingId);
-    }
+    // Payments are no longer recorded directly: a customer uploads a receipt (PaymentProofController)
+    // and the payment is recorded only when the administrator approves it.
 
     @PostMapping("/invoice/{bookingId}")
     public Invoice createInvoice(@PathVariable int bookingId) {
@@ -39,6 +27,11 @@ public class PaymentController {
     @GetMapping("/invoice/{bookingId}")
     public Map<String, Object> viewInvoice(@PathVariable int bookingId) {
         return paymentService.getInvoiceDetails(bookingId);
+    }
+
+    @GetMapping("/receipt/{paymentId}")
+    public Map<String, Object> viewReceipt(@PathVariable int paymentId) {
+        return paymentService.getReceipt(paymentId);
     }
 
     @PostMapping("/refund/{bookingId}")

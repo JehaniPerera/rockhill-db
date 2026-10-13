@@ -2,7 +2,6 @@ package com.rockhill.reception_hall.payment;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
 public class Payment {
 
     public enum PaymentType {
@@ -36,7 +35,7 @@ public class Payment {
 
     public Payment() {
     }
-
+    //test
     public Payment(int paymentId, int bookingId, BigDecimal amount, PaymentType paymentType,
                    LocalDate paymentDate, PaymentStatus paymentStatus, RefundStatus refundStatus) {
         this.paymentId = paymentId;
