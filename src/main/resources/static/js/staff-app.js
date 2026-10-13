@@ -50,11 +50,14 @@ function resetStaffForm() {
   $('staffFormTitle').textContent = 'Add staff / vendor'; $('sCancel').style.display = 'none';
 }
 window.editStaff = id => {
-  const s = staffList.find(x => x.staffId === id); editingId = id;
+  const s = staffList.find(x => Number(x.staffId) === Number(id));
+  if (!s) { toast('Staff record not found - refresh the page (Ctrl+F5)', false); return; }
+  editingId = Number(id);
   $('sName').value = s.name; $('sRole').value = s.role; $('sType').value = s.type; $('sContact').value = s.contact || '';
   $('staffFormTitle').textContent = 'Edit staff #' + id; $('sCancel').style.display = ''; scrollTo(0, 0);
 };
 window.delStaff = id => run(async () => {
+  if (!Number.isFinite(Number(id))) throw new Error('Invalid staff id - refresh the page (Ctrl+F5)');
   if (!confirm('Delete this staff member?')) return;
   await api('/staff/' + id, {method: 'DELETE'}); toast('Deleted'); await loadStaff();
 });
