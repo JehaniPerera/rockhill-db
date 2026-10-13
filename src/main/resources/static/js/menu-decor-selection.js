@@ -295,6 +295,8 @@ async function initSummaryPage(bookingId) {
     async function loadAll() {
         const booking = await MDSel.api(base);
         const editable = booking.status === 'PENDING' && !booking.submitted;
+        const afterSubmit = document.getElementById('after-submit');
+        if (afterSubmit) afterSubmit.style.display = booking.submitted ? 'block' : 'none';
         const wedding = booking.eventType === 'WEDDING';
 
         let choice = 'Not chosen yet';
@@ -349,8 +351,7 @@ async function initSummaryPage(bookingId) {
             if (!confirm('Submit this booking request? You cannot change it afterwards.')) return;
             try {
                 await MDSel.api(base + '/submit', { method: 'POST' });
-                MDSel.message('Your booking request was submitted.', 'success');
-            } catch (e) {
+                MDSel.message('Your booking request was submitted. You can return to the home page using the button below.', 'success');            } catch (e) {
                 MDSel.message(e.message, 'error');
             }
             try { await loadAll(); } catch (e) { MDSel.message(e.message, 'error'); }
