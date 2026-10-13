@@ -87,8 +87,10 @@ public class PaymentRepository {
                 status.dbValue(), bookingId);
     }
 
-    public List<Map<String, Object>> findBookingSummaries() {
-        return jdbc.queryForList(
+    // customerId == null: every booking (administrator); otherwise only that customer's bookings
+    public List<Map<String, Object>> findBookingSummaries(Long customerId) {
+        String where = customerId == null ? "" : "WHERE b.customer_id = ? ";
+        String sql =
                 "SELECT b.booking_id, c.name AS customer_name, b.event_type, " +
                         "DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
                         "DATE_FORMAT(GREATEST(DATE_SUB(b.event_date, INTERVAL 14 DAY), CURDATE()), '%Y-%m-%d') AS balance_due_date, " +
@@ -103,7 +105,39 @@ public class PaymentRepository {
                         "(SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.booking_id = b.booking_id) AS paid_total, " +
                         "(SELECT COUNT(*) FROM Invoice i WHERE i.booking_id = b.booking_id) AS has_invoice " +
                         "FROM Booking b JOIN Customer c ON b.customer_id = c.customer_id " +
-                        "ORDER BY b.booking_id");
+                        where + "ORDER BY b.booking_id";
+        return customerId == null ? jdbc.queryForList(sql) : jdbc.queryForList(sql, customerId);
+    }
+
+    // who owns this booking (used to stop a customer opening someone else's booking)
+    public Optional<Integer> findBookingOwner(int bookingId) {
+        List<Integer> rows = jdbc.query("SELECT customer_id FROM Booking WHERE booking_id = ?",
+                (rs, i) -> rs.getInt("customer_id"), bookingId);
+        return rows.stream().findFirst();
+    }
+
+    public Optional<Integer> findPaymentBooking(int paymentId) {
+        List<Integer> rows = jdbc.query("SELECT booking_id FROM Payment WHERE payment_id = ?",
+                (rs, i) -> rs.getInt("booking_id"), paymentId);
+        return rows.stream().findFirst();
+    }
+
+    // bookings that could need a balance call: a deposit has been paid and the booking is Confirmed or Completed.
+    // PaymentService.getBalanceReminders() works out the dates and the Pending / Overdue / Completed status.
+    public List<Map<String, Object>> findReminderCandidates() {
+        return jdbc.queryForList(
+                "SELECT b.booking_id, c.name AS customer_name, c.phone AS customer_phone, b.status, b.total_price, " +
+                        "DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
+                        "(SELECT DATE_FORMAT(MIN(d.payment_date), '%Y-%m-%d') FROM Payment d " +
+                        "WHERE d.booking_id = b.booking_id AND d.payment_type = 'Deposit') AS deposit_date, " +
+                        "(SELECT DATE_FORMAT(MIN(p.payment_date), '%Y-%m-%d') FROM Payment p " +
+                        "WHERE p.booking_id = b.booking_id AND p.payment_type = 'Balance') AS balance_paid_date, " +
+                        "(SELECT COUNT(*) FROM PaymentProof pp WHERE pp.booking_id = b.booking_id " +
+                        "AND pp.payment_type = 'Balance' AND pp.status = 'Pending Approval') AS proof_pending " +
+                        "FROM Booking b JOIN Customer c ON b.customer_id = c.customer_id " +
+                        "WHERE b.status IN ('Confirmed', 'Completed') " +
+                        "AND EXISTS (SELECT 1 FROM Payment x WHERE x.booking_id = b.booking_id AND x.payment_type = 'Deposit') " +
+                        "ORDER BY b.event_date");
     }
 
     public Optional<Map<String, Object>> findInvoiceDetails(int bookingId) {
