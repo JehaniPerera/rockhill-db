@@ -125,3 +125,30 @@ public class PaymentRepository {
                         "p.booking_id, p.amount, p.payment_type, p.payment_status, " +
                         "DATE_FORMAT(p.payment_date, '%Y-%m-%d') AS payment_date, " +
                         "b.event_type, DATE_FORMAT(b.event_date, '%Y-%m-%d') AS event_date, " +
+                        "c.name AS customer_name, c.phone AS customer_phone, " +
+                        "CASE WHEN b.status = 'Cancelled' OR EXISTS (SELECT 1 FROM Payment x WHERE x.booking_id = b.booking_id AND x.payment_type = 'Balance') " +
+                        "THEN 0 ELSE b.total_price END AS balance_remaining " +
+                        "FROM Payment p " +
+                        "JOIN Booking b ON p.booking_id = b.booking_id " +
+                        "JOIN Customer c ON b.customer_id = c.customer_id " +
+                        "WHERE p.payment_id = ?", paymentId);
+        return rows.stream().findFirst();
+    }
+
+    public List<Map<String, Object>> findHistory(int bookingId) {
+        return jdbc.queryForList(
+                "SELECT payment_id, CONCAT('RCPT-', LPAD(payment_id, 5, '0')) AS receipt_no, " +
+                        "booking_id, amount, payment_type, " +
+                        "DATE_FORMAT(payment_date, '%Y-%m-%d') AS payment_date, " +
+                        "payment_status, refund_status " +
+                        "FROM Payment WHERE booking_id = ? ORDER BY payment_id", bookingId);
+    }
+
+    public List<Map<String, Object>> findAll() {
+        return jdbc.queryForList(
+                "SELECT payment_id, CONCAT('RCPT-', LPAD(payment_id, 5, '0')) AS receipt_no, " +
+                        "booking_id, amount, payment_type, " +
+                        "DATE_FORMAT(payment_date, '%Y-%m-%d') AS payment_date, " +
+                        "payment_status, refund_status FROM Payment ORDER BY payment_id");
+    }
+}
