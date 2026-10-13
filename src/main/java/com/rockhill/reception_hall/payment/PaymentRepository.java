@@ -29,10 +29,19 @@ public class PaymentRepository {
     public Optional<BookingInfo> findBooking(int bookingId) {
         List<BookingInfo> rows = jdbc.query(
                 "SELECT id AS booking_id, status, total_price, venue_damaged FROM Booking WHERE id = ?",
-                (rs, i) -> new BookingInfo(rs.getInt("booking_id"), rs.getString("status"),
+                (rs, i) -> new BookingInfo(rs.getInt("booking_id"), normalizeStatus(rs.getString("status")),
                         rs.getBigDecimal("total_price"), rs.getBoolean("venue_damaged")),
                 bookingId);
         return rows.stream().findFirst();
+    }
+
+    // the database may hold 'CONFIRMED', 'confirmed' or 'Confirmed': always hand out 'Confirmed'
+    static String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return status;
+        }
+        String t = status.trim();
+        return t.substring(0, 1).toUpperCase() + t.substring(1).toLowerCase();
     }
 
     // true once the administrator has approved the date for this booking
@@ -92,7 +101,7 @@ public class PaymentRepository {
     }
 
     public void confirmBooking(int bookingId) {
-        jdbc.update("UPDATE Booking SET status = 'CONFIRMED' WHERE id = ? AND status = 'PENDING'", bookingId);
+        jdbc.update("UPDATE Booking SET status = 'Confirmed' WHERE id = ? AND UPPER(status) = 'PENDING'", bookingId);
     }
 
     public void updateDepositRefundStatus(int bookingId, Payment.RefundStatus status) {
@@ -109,7 +118,7 @@ public class PaymentRepository {
                         "DATE_FORMAT(DATE_SUB(b.event_date, INTERVAL 14 DAY), '%Y-%m-%d') AS due_date, " +
                         "(b.status IN ('CONFIRMED','COMPLETED') AND CURDATE() > DATE_SUB(b.event_date, INTERVAL 14 DAY) " +
                         "AND " + BALANCE_PAID_SQL + " < b.total_price) AS is_overdue, " +
-                        "b.guest_count, b.status, b.total_price, b.venue_damaged, b.availability_approved, " +
+                        "b.guest_count, CONCAT(UPPER(LEFT(b.status, 1)), LOWER(SUBSTRING(b.status, 2))) AS status, b.total_price, b.venue_damaged, b.availability_approved, " +
                         "(SELECT p.refund_status FROM Payment p WHERE p.booking_id = b.id AND p.payment_type = 'Deposit' ORDER BY p.payment_id LIMIT 1) AS deposit_refund_status, " +
                         "(SELECT COUNT(*) FROM Payment p WHERE p.booking_id = b.id AND p.payment_type = 'Deposit') AS deposit_paid, " +
                         "(" + BALANCE_PAID_SQL + " >= b.total_price) AS balance_paid, " +
