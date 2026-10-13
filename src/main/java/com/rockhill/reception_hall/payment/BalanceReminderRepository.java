@@ -10,9 +10,11 @@ import java.util.Map;
 public class BalanceReminderRepository {
 
     private final JdbcTemplate jdbc;
+    private final PaymentRepository payments;
 
-    public BalanceReminderRepository(JdbcTemplate jdbc) {
+    public BalanceReminderRepository(JdbcTemplate jdbc, PaymentRepository payments) {
         this.jdbc = jdbc;
+        this.payments = payments;
     }
 
     // Confirmed bookings (deposit paid) whose call-reminder date has arrived: today >= event date - 17 days.
@@ -30,8 +32,8 @@ public class BalanceReminderRepository {
                         "DATEDIFF(DATE_SUB(b.event_date, INTERVAL 14 DAY), CURDATE()) AS days_left, " +
                         "(" + paid + " >= b.total_price) AS balance_paid, " +
                         paid + " AS balance_paid_amount " +
-                        "FROM booking b JOIN customer c ON b.customer_id = c.id " +
-                        "WHERE b.status = 'Confirmed' " +
+                        "FROM Booking b JOIN Customer c ON b.customer_id = c.id " +
+                        "WHERE b.status = 'CONFIRMED' " +
                         "AND CURDATE() >= DATE_SUB(b.event_date, INTERVAL 17 DAY) " +
                         "AND EXISTS (SELECT 1 FROM Payment d WHERE d.booking_id = b.id AND d.payment_type = 'Deposit') " +
                         (includeCompleted
