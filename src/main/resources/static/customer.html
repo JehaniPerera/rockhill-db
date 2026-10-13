@@ -15,7 +15,8 @@
         .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
         label{display:block;font-weight:600;margin:12px 0 6px}
         select,input{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff}
-        dl{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;margin:0}
+        input[readonly]{background:#f2f4f7;color:var(--muted)}
+        dl{display:grid;grid-template-columns:170px 1fr;gap:6px 12px;margin:0}
         dt{color:var(--muted)} dd{margin:0;font-weight:600}
         .actions{display:flex;gap:10px;flex-wrap:wrap}
         button,.btnlink{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
@@ -56,7 +57,14 @@
 
         <div id="uploadBox" class="upload" hidden>
             <h2 id="payFor"></h2>
-            <p class="muted">Pay this amount by bank transfer to the hall's account (ask Rockhill Reception Hall for the account details). Then upload a photo, screenshot or PDF of your receipt or bank deposit slip.</p>
+            <p class="muted">Pay by bank transfer to the hall's account (ask Rockhill Reception Hall for the account details). Then upload a photo, screenshot or PDF of your receipt or bank deposit slip.</p>
+
+            <div id="amountBox" hidden>
+                <label for="amount">Amount you paid (Rs.)</label>
+                <input id="amount" type="number" min="1" step="0.01" inputmode="decimal">
+                <p id="amountHelp" class="muted" style="margin-top:6px"></p>
+            </div>
+
             <label for="proofFile">Receipt (JPG, PNG, WEBP or PDF, up to 5 MB)</label>
             <input id="proofFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
             <label for="reference">Bank reference number (optional)</label>
@@ -96,12 +104,13 @@
 
 <script>
     const DEPOSIT = 20000;               // separate refundable deposit (same value as the server)
+    const MIN_INSTALLMENT = 10000;       // smallest balance installment (same value as the server)
     const MAX_BYTES = 5 * 1024 * 1024;   // 5 MB
     const $ = id => document.getElementById(id);
     const rs = n => 'Rs. ' + Number(n).toLocaleString();
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const PROOF_BADGE = {'Pending Approval':'b-amber', 'Approved':'b-green', 'Rejected':'b-red'};
-    const TYPE_LABEL = {deposit:'the deposit', balance:'the remaining balance', full:'the full amount (deposit + balance)'};
+    const TYPE_LABEL = {deposit:'the deposit', balance:'a balance payment', full:'the full amount (deposit + balance)'};
     let bookings = [];
     let nextPayment = null;
 
@@ -142,14 +151,16 @@
         if (Number(b.balance_paid) > 0) return ['Fully Paid', 'b-green'];
         if (pending) return ['Pending Approval', 'b-amber'];
         if (Number(b.is_overdue) === 1) return ['Overdue', 'b-red'];
+        if (Number(b.balance_paid_amount) > 0) return ['Partially paid - balance pending', 'b-amber'];
         if (Number(b.deposit_paid) > 0) return ['Deposit paid - balance pending', 'b-amber'];
         return ['Not paid yet', 'b-grey'];
     }
 
+    // the amount this submission is for (the balance amount is what the customer typed)
     function amountFor(b, kind) {
         if (kind === 'deposit') return DEPOSIT;
-        if (kind === 'balance') return Number(b.total_price);
-        return Number(b.total_price) + DEPOSIT;
+        if (kind === 'full') return Number(b.total_price) + DEPOSIT;
+        return Number($('amount').value);
     }
 
     async function showBooking() {
@@ -179,9 +190,11 @@
         const latest = proofs[0];
 
         const depositPaid = Number(b.deposit_paid) > 0;
-        const balancePaid = Number(b.balance_paid) > 0;
+        const balanceDone = Number(b.balance_paid) > 0;          // the whole balance is settled
+        const paidBalance = Number(b.balance_paid_amount);       // installments paid so far
+        const left = Number(b.balance_remaining);                // still to pay on the balance
         const cancelled = b.status === 'Cancelled';
-        const late = Number(b.late_booking) === 1;   // event is less than 14 days away
+        const late = Number(b.late_booking) === 1;               // the due date has passed / event is less than 14 days away
         const overdue = Number(b.is_overdue) === 1;
         const open = b.status === 'Pending' || b.status === 'Confirmed';
         const approved = Boolean(Number(b.availability_approved)) || b.status === 'Confirmed';
@@ -189,13 +202,27 @@
         // which payment is the customer expected to make next?
         nextPayment = null;
         if (!depositPaid && open && approved) nextPayment = late ? 'full' : 'deposit';
-        else if (b.status === 'Confirmed' && depositPaid && !balancePaid) nextPayment = 'balance';
+        else if (b.status === 'Confirmed' && depositPaid && !balanceDone) nextPayment = 'balance';
 
         const canUpload = nextPayment !== null && !pending;
         $('uploadBox').hidden = !canUpload;
         $('btnSubmit').disabled = false;
+        $('amountBox').hidden = true;
         if (canUpload) {
-            $('payFor').textContent = 'Pay ' + TYPE_LABEL[nextPayment] + ': ' + rs(amountFor(b, nextPayment));
+            if (nextPayment === 'deposit') {
+                $('payFor').textContent = 'Pay the deposit: ' + rs(DEPOSIT);
+            } else if (nextPayment === 'full') {
+                $('payFor').textContent = 'Pay the full amount (deposit + balance): ' + rs(Number(b.total_price) + DEPOSIT);
+            } else {
+                $('payFor').textContent = 'Pay the balance: ' + rs(left) + ' remaining';
+                $('amountBox').hidden = false;
+                $('amount').value = left;               // starts as "pay everything that is left"
+                $('amount').max = left;
+                $('amount').readOnly = late;            // after the due date only the full amount is accepted
+                $('amountHelp').textContent = late
+                    ? 'The due date has passed, so the full remaining amount must be paid at once.'
+                    : 'You can pay in installments: at least ' + rs(MIN_INSTALLMENT) + ' each time, or everything that is left. The whole balance must be paid by ' + b.balance_due_date + '.';
+            }
         }
 
         const link = $('lnkInvoice');
@@ -204,21 +231,21 @@
 
         let hint;
         if (cancelled) hint = 'This booking is cancelled, so no payments can be made.';
-        else if (balancePaid) hint = 'Everything is paid. Thank you!';
+        else if (balanceDone) hint = 'Everything is paid. Thank you!';
         else if (pending) hint = 'Your payment proof is waiting for the administrator to approve it. The result will appear here.';
         else if (!approved && !depositPaid && open) hint = 'Waiting for the administrator to approve your date. You can pay after approval.';
         else if (canUpload && latest && latest.status === 'Rejected') hint = 'Your last payment proof was rejected: ' + latest.rejection_reason + ' Please upload a new receipt.';
         else if (nextPayment === 'full') hint = 'Your event is less than 14 days away, so the deposit and the full balance must be paid at once.';
         else if (!depositPaid) hint = 'Pay the deposit by bank transfer, then upload your receipt below.';
-        else if (overdue) hint = 'Your balance was due on ' + b.due_date + '. Please pay it and upload your receipt as soon as possible.';
-        else hint = 'Deposit approved. Pay the balance before ' + b.balance_due_date + ' and upload your receipt.';
+        else if (overdue) hint = 'Your balance was due on ' + b.due_date + '. Please pay the full remaining ' + rs(left) + ' and upload your receipt as soon as possible.';
+        else if (paidBalance > 0) hint = 'You have paid ' + rs(paidBalance) + ' of the balance. Pay the remaining ' + rs(left) + ' before ' + b.balance_due_date + '.';
+        else hint = 'Deposit approved. Pay the balance before ' + b.balance_due_date + ' (in installments if you wish) and upload your receipt.';
         $('hint').textContent = hint;
 
         const [label, cls] = paymentState(b, Boolean(pending));
-        const remaining = cancelled ? '-' : (balancePaid ? rs(0) : rs(b.total_price));
         const dueText = overdue ? 'Overdue - was due ' + b.due_date
             : (late ? 'Immediately (event is less than 14 days away)' : b.balance_due_date);
-        const dueRow = (cancelled || balancePaid) ? '' : `<dt>Balance due by</dt><dd>${dueText}</dd>`;
+        const dueRow = (cancelled || balanceDone) ? '' : `<dt>Balance due by</dt><dd>${dueText}</dd>`;
 
         $('details').className = '';
         $('details').innerHTML = `<dl>
@@ -226,8 +253,9 @@
       <dt>Booking status</dt><dd>${esc(b.status)}</dd>
       <dt>Payment status</dt><dd><span class="badge ${cls}">${label}</span></dd>
       <dt>Total price</dt><dd>${rs(b.total_price)}</dd>
-      <dt>Paid so far (approved)</dt><dd>${rs(b.paid_total)}</dd>
-      <dt>Balance remaining</dt><dd>${remaining}</dd>
+      <dt>Balance paid so far</dt><dd>${rs(paidBalance)}</dd>
+      <dt>Balance remaining</dt><dd>${cancelled ? '-' : rs(left)}</dd>
+      <dt>All approved payments</dt><dd>${rs(b.paid_total)} (includes the ${rs(DEPOSIT)} deposit)</dd>
       ${dueRow}</dl>`;
 
         $('proofs').innerHTML = proofError
@@ -259,6 +287,20 @@
     async function submitProof() {
         const b = selected();
         if (!b || !nextPayment) return;
+
+        let amountText = '';
+        if (nextPayment === 'balance') {
+            amountText = $('amount').value.trim();
+            const amt = Number(amountText);
+            const left = Number(b.balance_remaining);
+            if (!amountText || !(amt > 0)) { say('Please type the amount you paid.', 'err'); return; }
+            if (amt > left + 0.001) { say('The amount is more than the remaining balance (' + rs(left) + ').', 'err'); return; }
+            if (amt < left - 0.001 && amt < MIN_INSTALLMENT) {
+                say('The smallest installment is ' + rs(MIN_INSTALLMENT) + ' (or pay everything that is left).', 'err');
+                return;
+            }
+        }
+
         const file = $('proofFile').files[0];
         if (!file) { say('Please choose your receipt file first.', 'err'); return; }
         if (file.size > MAX_BYTES) { say('The file is too large. Please choose a file smaller than 5 MB.', 'err'); return; }
@@ -266,6 +308,7 @@
 
         const form = new FormData();
         form.append('type', nextPayment);
+        if (nextPayment === 'balance') form.append('amount', amountText);
         form.append('reference', $('reference').value.trim());
         form.append('file', file);
 

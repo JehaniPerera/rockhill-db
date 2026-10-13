@@ -21,13 +21,14 @@ public class PaymentProofController {
         this.service = service;
     }
 
-    // customer: upload the receipt for a deposit, balance or full payment
+    // customer: upload the receipt for a deposit, a balance installment or a full payment
     @PostMapping("/submit/{bookingId}")
     public String submit(@PathVariable int bookingId,
                          @RequestParam("type") String type,
+                         @RequestParam(value = "amount", required = false) String amount,
                          @RequestParam(value = "reference", required = false) String reference,
                          @RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
-        service.submit(bookingId, type, reference, file);
+        service.submit(bookingId, type, amount, reference, file);
         return "Receipt uploaded. Your payment is now Pending Approval.";
     }
 

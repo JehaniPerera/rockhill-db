@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -62,9 +63,11 @@ public class PaymentProofService {
 
     // ---------------------------------------------------------------- customer
 
-    public PaymentProof submit(int bookingId, String typeText, String reference, MultipartFile file) throws IOException {
+    // amountText is only used for balance payments (an installment); the deposit and the full payment have fixed amounts
+    public PaymentProof submit(int bookingId, String typeText, String amountText, String reference,
+                               MultipartFile file) throws IOException {
         ProofType type = ProofType.from(typeText);
-        BigDecimal amount = validateAndPrice(bookingId, type);   // same rules as a real payment
+        BigDecimal amount = validateAndPrice(bookingId, type, amountText);   // same rules as a real payment
         if (proofs.countPending(bookingId) > 0) {
             throw new IllegalStateException("A payment proof for this booking is already waiting for approval.");
         }
@@ -116,8 +119,11 @@ public class PaymentProofService {
                 yield "Deposit approved. The booking is now Confirmed.";
             }
             case BALANCE -> {
-                paymentService.recordBalance(bookingId);
-                yield "Balance approved. The booking is now fully paid.";
+                paymentService.recordBalance(bookingId, p.amount());
+                BigDecimal left = paymentService.balanceRemainingFor(bookingId);
+                yield left.signum() == 0
+                        ? "Balance approved. The booking is now fully paid."
+                        : "Installment approved. " + money(left) + " of the balance is still remaining.";
             }
             case FULL -> {
                 paymentService.recordFullPayment(bookingId);
@@ -144,21 +150,33 @@ public class PaymentProofService {
 
     // ----------------------------------------------------------------- helpers
 
-    private BigDecimal validateAndPrice(int bookingId, ProofType type) {
+    private BigDecimal validateAndPrice(int bookingId, ProofType type, String amountText) {
         return switch (type) {
             case DEPOSIT -> {
                 paymentService.validateDeposit(bookingId);
                 yield paymentService.depositAmount();
             }
-            case BALANCE -> {
-                paymentService.validateBalance(bookingId);
-                yield paymentService.balanceAmountFor(bookingId);
-            }
+            case BALANCE -> paymentService.validateBalance(bookingId, parseAmount(amountText));
             case FULL -> {
                 paymentService.validateFull(bookingId);
                 yield paymentService.fullAmountFor(bookingId);
             }
         };
+    }
+
+    private static BigDecimal parseAmount(String text) {
+        if (text == null || text.isBlank()) {
+            return null;                    // no amount typed: pay everything that is left
+        }
+        try {
+            return new BigDecimal(text.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("The amount must be a number, for example 50000.");
+        }
+    }
+
+    private static String money(BigDecimal amount) {
+        return String.format(Locale.US, "Rs. %,.2f", amount);
     }
 
     private PaymentProof requirePending(int proofId) {

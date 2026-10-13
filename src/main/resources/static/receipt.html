@@ -61,7 +61,7 @@
           <dt>Event</dt><dd>${esc(r.event_type)} on ${r.event_date}</dd>
           <dt>Payment type</dt><dd>${esc(r.payment_type)}</dd>
           <dt>Payment status</dt><dd>${esc(r.payment_status)}</dd>
-          <dt>Balance remaining (now)</dt><dd>${rs(r.balance_remaining)}</dd>
+          <dt>Balance remaining after this payment</dt><dd>${rs(r.balance_remaining)}</dd>
         </dl>
         <div class="amount"><span>Amount paid</span><span>${rs(r.amount)}</span></div>
         <div class="note">Thank you for your payment.${depositNote}</div>`;
