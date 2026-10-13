@@ -29,6 +29,9 @@
 
     <button id="submit-btn" type="button" disabled>Submit booking request</button>
     <p class="pending-note">After you submit, this booking can no longer be changed.</p>
+    <div id="after-submit" style="display:none; margin-top:20px;">
+        <a class="btn" th:href="@{/booking/booking-index.html}">Go to home page</a>
+    </div>
 </main>
 <script th:src="@{/js/menu-decor-selection.js}"></script>
 </body>
