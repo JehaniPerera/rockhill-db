@@ -4,64 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Event Booking</title>
-    <link rel="stylesheet" href="/booking/css/style.css">
+    <link rel="stylesheet" href="/booking/css/booking-theme.css">
 </head>
 <body>
 <header>
     <h1>Rockhill Reception Hall &amp; Caterers</h1>
     <nav>
-        <a href="/booking/index.html">Home</a>
-        <a href="/booking/wedding-booking.html">Wedding booking</a>
-        <a href="/booking/event-booking.html">Event booking</a>
+        <a href="/booking/booking-index.html">Home</a>
         <a href="/booking/my-bookings.html">My bookings</a>
-        <a href="/booking/admin.html">Admin</a>
     </nav>
 </header>
 <main>
     <div class="card">
-        <h2>Other event booking</h2>
+        <h2>Event booking</h2>
+        <p>For birthdays, anniversaries, corporate and other events. Fill in your details and check that your date
+            is free. Next you will choose your catering menu, add-ons and decor, and then send your booking request
+            to the hall team.</p>
+
         <div class="row">
             <div><label for="customerName">Your name</label><input id="customerName" maxlength="100"></div>
-            <div><label for="customerPhone">Phone</label><input id="customerPhone" maxlength="15"></div>
+            <div><label for="customerPhone">Phone</label><input id="customerPhone" maxlength="15" placeholder="0771234567 or +94771234567"></div>
         </div>
-        <label for="customerEmail">Email</label><input id="customerEmail" type="email">
-        <label for="eventDescription">Type of event</label>
-        <select id="eventDescription">
-            <option>Birthday</option><option>Engagement</option><option>Anniversary</option>
-            <option>Corporate event</option><option>Other</option>
-        </select>
+        <label for="customerEmail">Email</label><input id="customerEmail" type="email" maxlength="100">
+
+        <div class="row">
+            <div>
+                <label for="eventType">Event type</label>
+                <select id="eventType">
+                    <option value="">-- choose --</option>
+                    <option value="BIRTHDAY">Birthday</option>
+                    <option value="ANNIVERSARY">Anniversary</option>
+                    <option value="CORPORATE">Corporate event</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+            <div id="descWrap" class="hidden">
+                <label for="eventDescription">What kind of event?</label>
+                <input id="eventDescription" maxlength="50" placeholder="e.g. Engagement, Get-together">
+            </div>
+        </div>
+
         <div class="row">
             <div><label for="eventDate">Event date</label><input id="eventDate" type="date"></div>
             <div><label for="guestCount">Number of guests</label><input id="guestCount" type="number" min="1"></div>
         </div>
+
         <button class="btn secondary" id="checkBtn" type="button">Check availability</button>
+        <button class="btn" id="continueBtn" type="button">Continue to menu selection</button>
         <div id="suggestions" style="margin-top:10px"></div>
-    </div>
-
-    <div class="card">
-        <h2>Choose a menu</h2>
-        <div id="selectionList">Loading...</div>
-        <button class="btn" id="holdBtn" type="button">Hold my date</button>
-    </div>
-
-    <div id="extras" class="hidden">
-        <div class="card"><h2>Add-ons</h2><div id="addonList">Loading...</div></div>
-        <div class="card"><h2>Decor</h2><div id="decorList">Loading...</div></div>
-    </div>
-
-    <div class="card hidden" id="estimateCard">
-        <h2>Booking summary</h2>
-        <table><tbody id="estimate"></tbody></table>
-        <p><small>The estimate is not final. Payments (deposit and balance) are handled after confirmation.</small></p>
-    </div>
-
-    <div class="card">
-        <button class="btn hidden" id="submitBtn" type="button">Submit request</button>
-        <button class="btn danger hidden" id="discardBtn" type="button">Discard draft</button>
         <div id="msg" class="msg"></div>
     </div>
 </main>
-<script src="/booking/js/common.js"></script>
+<script src="/booking/js/booking-helpers.js"></script>
 <script src="/booking/js/booking-flow.js"></script>
 <script>initBookingPage('OTHER');</script>
 </body>

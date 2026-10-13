@@ -69,14 +69,11 @@ function validateBooking(b, isWedding) {
     if (!b.customerEmail) return 'Please enter your email.';
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.customerEmail))
         return 'Please enter a valid email address that contains @ (like name@example.com).';
-    if (!isWedding && !b.eventDescription) return 'Please choose the type of event.';
+    if (!isWedding && !b.eventDescription) return 'Please describe what kind of event it is.';
     if (!b.eventDate) return 'Please pick the event date.';
     if (!b.guestCount || b.guestCount < 1) return 'Please enter the number of guests.';
     if (isWedding && (b.guestCount < 100 || b.guestCount > 300))
         return 'Wedding guest count must be between 100 and 300. Please correct it or contact the administrator.';
-    if (!b.selectionId)
-        return isWedding ? 'Please choose a package. A package is required for weddings.'
-            : 'Please choose a menu: click one of the menus in "Choose a menu".';
     return null;
 }
 function tomorrow() {
