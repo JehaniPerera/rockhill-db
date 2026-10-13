@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Booking management</title>
+
+    <link rel="stylesheet" href="/booking/css/booking-theme.css">
+
+    <style>
+        body {
+            background: #f1f3f8;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .side {
+            width: 230px;
+            background: #fff;
+            box-shadow: 1px 0 6px rgba(0,0,0,.08);
+            padding: 18px 14px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .brand {
+            font-weight: bold;
+            font-size: 17px;
+            color: #5a1f2b;
+            padding: 6px 8px 16px;
+            line-height: 1.25;
+        }
+
+        .brand small {
+            display: block;
+            font-weight: normal;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .side .group {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #999;
+            margin: 16px 8px 6px;
+            letter-spacing: .5px;
+        }
+
+        .side a,
+        .side button.nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: 0;
+            color: #444;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font: inherit;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            margin-bottom: 2px;
+        }
+
+        .side a:hover,
+        .side button.nav:hover {
+            background: #f4ecee;
+        }
+
+        .side button.nav.active {
+            background: #5a1f2b;
+            color: #fff;
+        }
+
+        .side .count {
+            font-size: 12px;
+            background: #eee;
+            color: #444;
+            border-radius: 10px;
+            padding: 1px 8px;
+        }
+
+        .side button.nav.active .count {
+            background: rgba(255,255,255,.25);
+            color: #fff;
+        }
+
+        .content {
+            flex: 1;
+            min-width: 0;
+            padding: 0 22px 30px;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 18px 0;
+        }
+
+        .top h2 {
+            margin: 0;
+            font-size: 22px;
+            color: #2b2b2b;
+        }
+
+        .panel {
+            background: #fff;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 1px 6px rgba(0,0,0,.08);
+        }
+
+        .panel h3 {
+            margin: 0 0 10px;
+            font-size: 17px;
+            color: #5a1f2b;
+        }
+
+        .alerts ul {
+            margin: 6px 0 0;
+            padding-left: 22px;
+            font-size: 14px;
+        }
+
+        .alerts li {
+            margin: 8px 0;
+        }
+
+        .alerts .bad {
+            color: #b3261e;
+            font-weight: bold;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .toolbar h3 {
+            margin: 0;
+            font-size: 17px;
+            color: #5a1f2b;
+        }
+
+        .toolbar .box {
+            min-width: 240px;
+        }
+
+        .hint {
+            font-size: 13px;
+            color: #666;
+            margin: 6px 0 10px;
+        }
+
+        .overdue {
+            color: #b3261e;
+            font-weight: bold;
+        }
+
+        td.actions {
+            white-space: nowrap;
+        }
+
+        td:nth-child(3) {
+            white-space: nowrap;
+        }
+
+        .tablewrap {
+            overflow-x: auto;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                flex-direction: column;
+            }
+
+            .side {
+                width: 100%;
+                height: auto;
+                position: static;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <!-- ADMIN SIDEBAR -->
+    <aside class="side">
+
+        <div class="brand">
+            Rockhill Reception Hall &amp; Caterers
+            <small>Administrator tools</small>
+        </div>
+
+        <div class="group">Bookings</div>
+
+        <div id="nav"></div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <div class="content">
+
+        <div class="top">
+            <h2>Booking management</h2>
+        </div>
+
+        <div id="msg" class="msg"></div>
+
+
+        <!-- NEEDS ATTENTION -->
+        <div class="panel alerts" style="margin-bottom:20px">
+
+            <h3>Needs attention</h3>
+
+            <ul id="alerts"></ul>
+
+        </div>
+
+
+        <!-- BOOKING MANAGEMENT TABLE -->
+        <div class="panel">
+
+            <div class="toolbar">
+
+                <h3 id="tabTitle">Bookings</h3>
+
+                <div class="box">
+
+                    <label for="search">
+                        Search (customer name or booking number)
+                    </label>
+
+                    <input
+                            id="search"
+                            type="text"
+                            placeholder="e.g. Perera or 7"
+                    >
+
+                </div>
+
+            </div>
+
+            <p class="hint" id="tabHint"></p>
+
+            <div class="tablewrap">
+
+                <table>
+
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Guests</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+
+                    <tbody id="rows"></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script src="/booking/js/booking-helpers.js"></script>
+
+<script>
+
+    const GROUPS = {
+
+        needs: {
+            label: 'Needs decision',
+            hint: 'Submitted requests waiting for you to accept or reject.'
+        },
+
+        deposit: {
+            label: 'Awaiting deposit',
+            hint: 'Accepted bookings. The customer has 3 days to pay the Rs. 20,000 deposit, otherwise the booking is cancelled automatically.'
+        },
+
+        confirmed: {
+            label: 'Confirmed',
+            hint: 'Deposit received. The balance is due 14 days before the event.'
+        },
+
+        completed: {
+            label: 'Completed',
+            hint: 'Events that took place, with the venue damage status.'
+        },
+
+        cancelled: {
+            label: 'Cancelled',
+            hint: 'Rejected, cancelled, expired, or deposit not received.'
+        }
+
+    };
+
+
+    let all = [];
+
+    let current = 'needs';
+
+
+    function today() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+
+    function addDays(iso, n) {
+
+        const d = new Date(iso + 'T00:00:00');
+
+        d.setDate(d.getDate() + n);
+
+        return d.toISOString().slice(0, 10);
+
+    }
+
+
+    function groupOf(b) {
+
+        if (b.status === 'PENDING') {
+            return b.approved ? 'deposit' : 'needs';
+        }
+
+        return b.status.toLowerCase();
+
+    }
+
+
+    function isOverdue(b) {
+
+        return groupOf(b) === 'deposit'
+            && b.depositDueDate
+            && b.depositDueDate < today();
+
+    }
+
+
+    function typeLabel(b) {
+
+        return b.eventType === 'WEDDING'
+            ? 'Wedding'
+            : (b.eventDescription || 'Other event');
+
+    }
+
+
+    // LOAD BOOKINGS
+    async function load() {
+
+        clearMsg('msg');
+
+        try {
+
+            try {
+
+                await api(
+                    '/api/bookings/deposits/sync',
+                    { method: 'POST' }
+                );
+
+            } catch (e) {
+
+                // Ignore payment synchronisation errors.
+
+            }
+
+
+            const lists = await Promise.all(
+
+                [
+                    'PENDING',
+                    'CONFIRMED',
+                    'COMPLETED',
+                    'CANCELLED'
+                ].map(status =>
+                    api('/api/bookings?status=' + status)
+                )
+
+            );
+
+
+            all = [].concat.apply([], lists);
+
+            render();
+
+        } catch (e) {
+
+            showMsg(
+                'msg',
+                'Cannot reach the booking server. Start the Spring Boot application and reload this page. (' +
+                e.message +
+                ')'
+            );
+
+        }
+
+    }
+
+
+    // RENDER PAGE WITHOUT SUMMARY BOXES
+    function render() {
+
+        renderNav();
+
+        renderAlerts();
+
+        renderTable();
+
+    }
+
+
+    // COUNT BOOKINGS FOR SIDEBAR
+    function countOf(key) {
+
+        return all.filter(
+            b => groupOf(b) === key
+        ).length;
+
+    }
+
+
+    // SIDEBAR NAVIGATION
+    function renderNav() {
+
+        const nav = document.getElementById('nav');
+
+        nav.innerHTML = '';
+
+
+        Object.keys(GROUPS).forEach(key => {
+
+            const b = document.createElement('button');
+
+            b.type = 'button';
+
+            b.className =
+                'nav' + (key === current ? ' active' : '');
+
+
+            const label = document.createElement('span');
+
+            label.textContent = GROUPS[key].label;
+
+
+            const count = document.createElement('span');
+
+            count.className = 'count';
+
+            count.textContent = countOf(key);
+
+
+            b.appendChild(label);
+
+            b.appendChild(count);
+
+
+            b.addEventListener('click', () => {
+
+                current = key;
+
+                render();
+
+                document.getElementById('tabTitle')
+                    .scrollIntoView({ behavior: 'smooth' });
+
+            });
+
+
+            nav.appendChild(b);
+
+        });
+
+    }
+
+
+    // NEEDS ATTENTION NOTIFICATIONS
+    function renderAlerts() {
+
+        const ul = document.getElementById('alerts');
+
+        ul.innerHTML = '';
+
+
+        const add = (text, bad) => {
+
+            const li = document.createElement('li');
+
+            li.textContent = text;
+
+            if (bad) {
+                li.className = 'bad';
+            }
+
+            ul.appendChild(li);
+
+        };
+
+
+        // Requests waiting for a decision
+        all.filter(
+            b => groupOf(b) === 'needs'
+        ).forEach(b => {
+
+            add(
+                'Booking #' + b.id +
+                ' (' + b.customerName + ', ' + b.eventDate +
+                ') is waiting for your decision.'
+            );
+
+        });
+
+
+        // Overdue deposits
+        all.filter(isOverdue).forEach(b => {
+
+            add(
+                'Booking #' + b.id +
+                ' (' + b.customerName +
+                '): deposit was due ' + b.depositDueDate +
+                '. It will be cancelled automatically if it is not received.',
+                true
+            );
+
+        });
+
+
+        // Deposits that are not overdue
+        all.filter(
+            b => groupOf(b) === 'deposit' && !isOverdue(b)
+        ).forEach(b => {
+
+            add(
+                'Booking #' + b.id +
+                ' (' + b.customerName +
+                '): deposit due by ' + b.depositDueDate + '.'
+            );
+
+        });
+
+
+        // Events within the next seven days
+        const weekEnd = addDays(today(), 7);
+
+
+        all.filter(
+            b => b.status === 'CONFIRMED'
+                && b.eventDate >= today()
+                && b.eventDate <= weekEnd
+        ).forEach(b => {
+
+            add(
+                'Booking #' + b.id +
+                ' (' + b.customerName +
+                ') takes place on ' + b.eventDate +
+                ' (within 7 days).'
+            );
+
+        });
+
+
+        // Confirmed bookings whose event dates have passed
+        all.filter(
+            b => b.status === 'CONFIRMED'
+                && b.eventDate < today()
+        ).forEach(b => {
+
+            add(
+                'Booking #' + b.id +
+                ' (' + b.customerName +
+                ') event date has passed: mark it completed.',
+                true
+            );
+
+        });
+
+
+        if (!ul.children.length) {
+
+            add('Nothing needs your attention.');
+
+        }
+
+    }
+
+
+    // BOOKING DETAILS
+    function detailsOf(b) {
+
+        const g = groupOf(b);
+
+
+        if (g === 'needs') {
+
+            return 'Waiting for admin decision';
+
+        }
+
+
+        if (g === 'deposit') {
+
+            return isOverdue(b)
+                ? 'Deposit overdue (was due ' + b.depositDueDate + ')'
+                : 'Accepted, deposit due by ' + b.depositDueDate;
+
+        }
+
+
+        if (g === 'confirmed') {
+
+            return 'Deposit received (' +
+                (b.depositConfirmedBy === 'AUTO'
+                    ? 'automatic'
+                    : 'confirmed by admin') +
+                '), balance due ' + b.balanceDueDate;
+
+        }
+
+
+        if (g === 'completed') {
+
+            return b.venueDamaged
+                ? 'Venue damaged' +
+                (b.venueDamageNotes
+                    ? ': ' + b.venueDamageNotes
+                    : '')
+                : 'No damage';
+
+        }
+
+
+        return b.cancellationReason || '';
+
+    }
+
+
+    // BOOKING TABLE
+    function renderTable() {
+
+        document.getElementById('tabTitle').textContent =
+            GROUPS[current].label;
+
+        document.getElementById('tabHint').textContent =
+            GROUPS[current].hint;
+
+
+        const q = document.getElementById('search')
+            .value.trim().toLowerCase();
+
+
+        let items = all.filter(
+            b => groupOf(b) === current
+        );
+
+
+        // SEARCH BY BOOKING NUMBER OR CUSTOMER NAME
+        if (q) {
+
+            items = items.filter(b =>
+
+                String(b.id) === q ||
+
+                (b.customerName || '')
+                    .toLowerCase()
+                    .includes(q)
+
+            );
+
+        }
+
+
+        const desc =
+            current === 'completed' ||
+            current === 'cancelled';
+
+
+        items.sort((a, b) =>
+
+            desc
+                ? b.eventDate.localeCompare(a.eventDate)
+                : a.eventDate.localeCompare(b.eventDate)
+
+        );
+
+
+        const body = document.getElementById('rows');
+
+        body.innerHTML = '';
+
+
+        if (!items.length) {
+
+            const tr = document.createElement('tr');
+
+            tr.appendChild(cell('No bookings here.'));
+
+            body.appendChild(tr);
+
+            return;
+
+        }
+
+
+        items.forEach(b => {
+
+            const tr = document.createElement('tr');
+
+
+            tr.appendChild(cell(b.id));
+
+            tr.appendChild(cell(b.customerName));
+
+            tr.appendChild(cell(b.eventDate));
+
+            tr.appendChild(cell(typeLabel(b)));
+
+            tr.appendChild(cell(b.guestCount));
+
+            tr.appendChild(statusCell(b.status));
+
+
+            const details = cell(detailsOf(b));
+
+            if (isOverdue(b)) {
+
+                details.className = 'overdue';
+
+            }
+
+            tr.appendChild(details);
+
+
+            const td = document.createElement('td');
+
+            td.className = 'actions';
+
+
+            const g = groupOf(b);
+
+
+            // ACCEPT OR REJECT
+            if (g === 'needs') {
+
+                td.appendChild(
+                    actionButton('Accept', () => accept(b.id))
+                );
+
+                td.appendChild(
+                    actionButton(
+                        'Reject',
+                        () => reject(b.id),
+                        'danger'
+                    )
+                );
+
+            }
+
+
+            // DEPOSIT ACTIONS
+            if (g === 'deposit') {
+
+                td.appendChild(
+                    actionButton(
+                        'Confirm deposit',
+                        () => confirmDeposit(b.id)
+                    )
+                );
+
+                td.appendChild(
+                    actionButton(
+                        'Reschedule',
+                        () => reschedule(b.id)
+                    )
+                );
+
+                td.appendChild(
+                    actionButton(
+                        'Cancel',
+                        () => cancel(b.id),
+                        'danger'
+                    )
+                );
+
+            }
+
+
+            // CONFIRMED BOOKING ACTIONS
+            if (g === 'confirmed') {
+
+                td.appendChild(
+                    actionButton(
+                        'Reschedule',
+                        () => reschedule(b.id)
+                    )
+                );
+
+                td.appendChild(
+                    actionButton(
+                        'Mark completed',
+                        () => complete(b.id)
+                    )
+                );
+
+                td.appendChild(
+                    actionButton(
+                        'Cancel',
+                        () => cancel(b.id),
+                        'danger'
+                    )
+                );
+
+            }
+
+
+            tr.appendChild(td);
+
+            body.appendChild(tr);
+
+        });
+
+    }
+
+
+    // CALL API AND REFRESH THE PAGE
+    async function call(path, options, okText) {
+
+        clearMsg('msg');
+
+        try {
+
+            await api(path, options);
+
+            await load();
+
+            showMsg('msg', okText, 'success');
+
+        } catch (e) {
+
+            showMsg('msg', e.message);
+
+        }
+
+    }
+
+
+    // ACCEPT BOOKING
+    function accept(id) {
+
+        return call(
+            '/api/bookings/' + id + '/confirm',
+            { method: 'POST' },
+
+            'Booking #' + id +
+            ' accepted. The customer has 3 days to pay the deposit; it becomes Confirmed once the deposit is received.'
+        );
+
+    }
+
+
+    // CONFIRM DEPOSIT
+    function confirmDeposit(id) {
+
+        if (!confirm(
+            'Confirm that the Rs. 20,000 deposit for booking #' +
+            id + ' was received?'
+        )) {
+            return;
+        }
+
+
+        return call(
+            '/api/bookings/' + id + '/deposit',
+            { method: 'POST' },
+
+            'Deposit confirmed for booking #' + id +
+            '. The booking is now Confirmed.'
+        );
+
+    }
+
+
+    // REJECT BOOKING
+    function reject(id) {
+
+        const reason = prompt(
+            'Reason for rejecting (required):'
+        );
+
+
+        if (!reason) {
+            return;
+        }
+
+
+        return call(
+            '/api/bookings/' + id + '/reject',
+            {
+                method: 'POST',
+                body: JSON.stringify({ reason: reason })
+            },
+
+            'Booking #' + id + ' rejected.'
+        );
+
+    }
+
+
+    // CANCEL BOOKING
+    function cancel(id) {
+
+        const reason = prompt(
+            'Reason for cancelling:'
+        );
+
+
+        if (reason === null) {
+            return;
+        }
+
+
+        if (!confirm(
+            'Cancel booking #' + id +
+            '? This releases the date and frees assigned staff.'
+        )) {
+            return;
+        }
+
+
+        return call(
+            '/api/bookings/' + id + '/cancel',
+            {
+                method: 'POST',
+                body: JSON.stringify({ reason: reason })
+            },
+
+            'Booking #' + id + ' cancelled.'
+        );
+
+    }
+
+
+    // RESCHEDULE BOOKING
+    async function reschedule(id) {
+
+        clearMsg('msg');
+
+        let d;
+
+
+        try {
+
+            d = await askNewDate();
+
+        } catch (e) {
+
+            showMsg('msg', e.message);
+
+            return;
+
+        }
+
+
+        if (!d) {
+            return;
+        }
+
+
+        return call(
+            '/api/bookings/' + id +
+            '/reschedule?newDate=' + encodeURIComponent(d) +
+            '&byCustomer=false',
+
+            { method: 'POST' },
+
+            'Booking #' + id + ' rescheduled.'
+        );
+
+    }
+
+
+    // MARK BOOKING AS COMPLETED
+    function complete(id) {
+
+        const dmg = confirm(
+            'Was the venue damaged?\n\n' +
+            'OK = YES (deposit is kept)\n' +
+            'Cancel = NO (deposit is refunded)'
+        );
+
+
+        let notes = '';
+
+
+        if (dmg) {
+
+            notes = prompt(
+                'Describe the damage (notes are saved for follow-up billing):'
+            ) || '';
+
+        }
+
+
+        return call(
+            '/api/bookings/' + id +
+            '/complete?venueDamaged=' + dmg +
+            '&notes=' + encodeURIComponent(notes),
+
+            { method: 'POST' },
+
+            'Booking #' + id + ' marked completed.'
+        );
+
+    }
+
+
+    // LIVE SEARCH
+    document.getElementById('search')
+        .addEventListener('input', renderTable);
+
+
+    // START THE PAGE
+    load();
+
+</script>
+
+</body>
+</html>
