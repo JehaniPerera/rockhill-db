@@ -51,7 +51,12 @@
     async function get(path) {
         const res = await fetch(path);
         const text = await res.text();
-        if (!res.ok) throw new Error(text || ('Error ' + res.status));
+        if (res.status === 401) { location.href = 'login.html'; throw new Error('Please log in again.'); }
+        if (!res.ok) {
+            let msg = text;
+            try { const j = JSON.parse(text); if (j && j.error) msg = j.error; } catch (e) { /* plain text */ }
+            throw new Error(msg || ('Error ' + res.status));
+        }
         return JSON.parse(text);
     }
 
@@ -63,7 +68,17 @@
                 get('/api/payments/invoice/' + encodeURIComponent(id)),
                 get('/api/payments/history/' + encodeURIComponent(id))
             ]);
-            const paid = rows.reduce((s, p) => s + Number(p.amount), 0);
+            const isDeposit = p => p.payment_type === 'Deposit';
+            const sum = list => list.reduce((s, p) => s + Number(p.amount), 0);
+            const depositRows = rows.filter(isDeposit);
+            const eventPaid = sum(rows.filter(p => !isDeposit(p)));   // paid towards the event price
+            const depositPaid = sum(depositRows);                      // separate refundable deposit
+            const paid = eventPaid + depositPaid;
+            // what happened to the deposit (refund_status: N/A = still held)
+            const DEPOSIT_OUTCOME = {'N/A': 'Held', 'Refund Due': 'Refund due', 'Refunded': 'Refunded', 'Forfeited': 'Forfeited'};
+            const outcome = depositRows.length ? (DEPOSIT_OUTCOME[depositRows[0].refund_status] || 'Held') : '';
+            const typeLabel = p => isDeposit(p) ? 'Security deposit (refundable)' : esc(p.payment_type);
+            const statusLabel = p => isDeposit(p) ? (DEPOSIT_OUTCOME[p.refund_status] || 'Held') : esc(p.payment_status);
             $('sheet').innerHTML = `
         <div class="head">
           <div>
@@ -81,12 +96,14 @@
         </dl>
         <table>
           <thead><tr><th>Payment</th><th>Date</th><th>Status</th><th class="num">Amount</th></tr></thead>
-          <tbody>${rows.map(p => `<tr><td>${esc(p.payment_type)}</td><td>${p.payment_date}</td>
-            <td>${esc(p.payment_status)}</td><td class="num">${rs(p.amount)}</td></tr>`).join('')}</tbody>
+          <tbody>${rows.map(p => `<tr><td>${typeLabel(p)}</td><td>${p.payment_date}</td>
+            <td>${statusLabel(p)}</td><td class="num">${rs(p.amount)}</td></tr>`).join('')}</tbody>
         </table>
         <div class="totals">
           <div><span>Event total</span><span>${rs(inv.total_amount)}</span></div>
-          <div class="big"><span>Total paid</span><span>${rs(paid)}</span></div>
+          <div><span>Paid for the event</span><span>${rs(eventPaid)}</span></div>
+          ${depositRows.length ? `<div><span>Security deposit (${outcome.toLowerCase()})</span><span>${rs(depositPaid)}</span></div>` : ''}
+          <div class="big"><span>Total paid (incl. deposit)</span><span>${rs(paid)}</span></div>
         </div>
         <div class="note">The Rs. 20,000 deposit is a separate refundable advance. It is refunded the day after the event if there is no damage to the venue.</div>`;
         } catch (e) {
