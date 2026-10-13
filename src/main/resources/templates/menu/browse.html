@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Our Menus')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <h1>Choose Your Menu</h1>
+    <div class="cards">
+        <div class="card" th:each="m : ${menus}">
+            <h3 th:text="${m.name}"></h3>
+            <p class="price">Rs. <span th:text="${#numbers.formatDecimal(m.pricePerGuest, 1, 'COMMA', 2, 'POINT')}"></span> per guest</p>
+
+            <!-- RESERVED: dishes section goes here later. Not built yet. -->
+            <div class="card-dishes"></div>
+
+            <button type="button" class="btn-select" data-kind="menu" th:attr="data-id=${m.menuId}" disabled>Select this menu</button>
+            <p class="pending-note">Open this page from your booking to select.</p>
+        </div>
+    </div>
+</main>
+</body>
+</html>

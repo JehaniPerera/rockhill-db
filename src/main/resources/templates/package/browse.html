@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Wedding Packages')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <h1>Wedding Packages</h1>
+    <p>Choose one package. The price depends on your number of guests.</p>
+
+    <div class="cards">
+        <div class="card" th:each="p : ${packages}">
+            <h3 th:text="${p.name}"></h3>
+            <p th:text="${p.description}"></p>
+
+            <table>
+                <tr><th>Guests</th><th>Price</th></tr>
+                <tr th:each="t : ${tiersByPackage.get(p.packageId)}">
+                    <td th:text="${t.minGuests} + ' - ' + ${t.maxGuests}"></td>
+                    <td class="price" th:text="'Rs. ' + ${#numbers.formatDecimal(t.totalPrice, 1, 'COMMA', 2, 'POINT')}"></td>
+                </tr>
+            </table>
+
+            <!-- RESERVED: dishes section can be added here later. Not built yet. -->
+            <div class="card-dishes"></div>
+
+            <button type="button" class="btn-select" data-kind="package" th:attr="data-id=${p.packageId}" disabled>Select this package</button>
+            <p class="pending-note">Open this page from your booking to select.</p>
+        </div>
+    </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Catalog Management')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <h1>Catalog Management</h1>
+    <p>Choose a catalog to manage.</p>
+
+    <div class="cards">
+        <a class="card" th:href="@{/admin/menus}">
+            <h3>Menu Catalog</h3>
+            <p>Add or remove menus and set the price per guest.</p>
+        </a>
+        <a class="card" th:href="@{/admin/addons}">
+            <h3>Add-on Catalog</h3>
+            <p>Manage add-ons, their prices and package rules.</p>
+        </a>
+        <a class="card" th:href="@{/admin/decor}">
+            <h3>Decor Catalog</h3>
+            <p>Manage decor options by category.</p>
+        </a>
+        <a class="card" th:href="@{/admin/packages}">
+            <h3>Package Catalog</h3>
+            <p>Manage wedding packages and their descriptions.</p>
+        </a>
+    </div>
+</main>
+</body>
+</html>
