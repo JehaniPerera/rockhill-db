@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     boolean existsByEventDateAndStatusIn(LocalDate date, Collection<BookingStatus> statuses);
+    boolean existsByEventDateAndStatusInAndSubmittedTrue(LocalDate date, Collection<BookingStatus> statuses);
     boolean existsByEventDateAndStatusInAndIdNot(LocalDate date, Collection<BookingStatus> statuses, Long id);
 
     List<Booking> findByStatus(BookingStatus status);

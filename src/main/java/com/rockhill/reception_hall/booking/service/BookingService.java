@@ -48,7 +48,8 @@ public class BookingService {
     // ---- Scenario 1: Check venue availability ----
     @Transactional(readOnly = true)
     public boolean isDateAvailable(LocalDate date) {
-        return !bookings.existsByEventDateAndStatusIn(date, DATE_BLOCKING);
+        // An unsubmitted draft is not a reservation. Only submitted active requests hold the date.
+        return !bookings.existsByEventDateAndStatusInAndSubmittedTrue(date, DATE_BLOCKING);
     }
 
     /** Scenario 1, alternate 2a: the date must be a valid future date. */
@@ -141,6 +142,10 @@ public class BookingService {
     // ---- customer presses the final Submit ----
     public Booking submit(Long id) {
         Booking b = editableBooking(id);
+        // Recheck at final submission; availability may have changed while the customer was selecting options.
+        if (bookings.existsByEventDateAndStatusInAndSubmittedTrue(b.getEventDate(), DATE_BLOCKING))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This date is no longer available. Please choose another date.");
         // Function 2 saves the package / menu on the booking; it must be chosen before the request is sent.
         if (b instanceof WeddingBooking w && w.getPackageId() == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please choose a wedding package before submitting");
