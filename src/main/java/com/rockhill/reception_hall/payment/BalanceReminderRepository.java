@@ -33,7 +33,7 @@ public class BalanceReminderRepository {
                         "(" + paid + " >= b.total_price) AS balance_paid, " +
                         paid + " AS balance_paid_amount " +
                         "FROM Booking b JOIN Customer c ON b.customer_id = c.id " +
-                        "WHERE b.status = 'CONFIRMED' " +
+                        "WHERE b.status IN ('CONFIRMED','COMPLETED') " +
                         "AND CURDATE() >= DATE_SUB(b.event_date, INTERVAL 17 DAY) " +
                         "AND EXISTS (SELECT 1 FROM Payment d WHERE d.booking_id = b.id AND d.payment_type = 'Deposit') " +
                         (includeCompleted

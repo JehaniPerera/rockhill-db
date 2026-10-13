@@ -173,7 +173,7 @@ public class PaymentService {
     // checkWindow = true when the customer uploads the receipt; false when the administrator approves it
     private void checkDeposit(BookingInfo booking, boolean checkWindow) {
         int bookingId = booking.bookingId();
-        if (!"Pending".equals(booking.status()) && !"Confirmed".equals(booking.status())) {
+        if (!isPayable(booking.status())) {
             throw new IllegalStateException("Deposit cannot be paid for a " + booking.status() + " booking");
         }
         requireApproved(booking);
@@ -188,7 +188,7 @@ public class PaymentService {
     // returns how much of the balance is still unpaid
     private BigDecimal checkBalance(BookingInfo booking) {
         int bookingId = booking.bookingId();
-        if (!"Confirmed".equals(booking.status())) {
+        if (!isPayable(booking.status()) || "Pending".equalsIgnoreCase(booking.status())) {
             throw new IllegalStateException("Balance can only be paid for a Confirmed booking (current status: " + booking.status() + ")");
         }
         if (payments.countPayments(bookingId, Payment.PaymentType.DEPOSIT) == 0) {
@@ -229,13 +229,22 @@ public class PaymentService {
     }
 
     private void checkFull(BookingInfo booking) {
-        if (!"Pending".equals(booking.status()) && !"Confirmed".equals(booking.status())) {
+        if (!isPayable(booking.status())) {
             throw new IllegalStateException("Payment cannot be made for a " + booking.status() + " booking");
         }
         requireApproved(booking);
         if (payments.countPayments(booking.bookingId(), Payment.PaymentType.DEPOSIT) > 0) {
             throw new IllegalStateException("Deposit already paid for this booking");
         }
+    }
+
+    // Pending, Confirmed and Completed bookings can still receive payments.
+    // "Completed" is what the booking module sets once the hall administrator has confirmed the booking,
+    // so a Completed booking that is not fully paid yet must still be payable.
+    private static boolean isPayable(String status) {
+        return "Pending".equalsIgnoreCase(status)
+                || "Confirmed".equalsIgnoreCase(status)
+                || "Completed".equalsIgnoreCase(status);
     }
 
     // a Pending booking can only be paid once the administrator has approved the date

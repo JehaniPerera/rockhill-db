@@ -107,7 +107,7 @@ public class PaymentRepository {
                         "DATE_FORMAT(GREATEST(DATE_SUB(b.event_date, INTERVAL 14 DAY), CURDATE()), '%Y-%m-%d') AS balance_due_date, " +
                         "(DATEDIFF(b.event_date, CURDATE()) < 14) AS late_booking, " +
                         "DATE_FORMAT(DATE_SUB(b.event_date, INTERVAL 14 DAY), '%Y-%m-%d') AS due_date, " +
-                        "(b.status = 'CONFIRMED' AND CURDATE() > DATE_SUB(b.event_date, INTERVAL 14 DAY) " +
+                        "(b.status IN ('CONFIRMED','COMPLETED') AND CURDATE() > DATE_SUB(b.event_date, INTERVAL 14 DAY) " +
                         "AND " + BALANCE_PAID_SQL + " < b.total_price) AS is_overdue, " +
                         "b.guest_count, b.status, b.total_price, b.venue_damaged, b.availability_approved, " +
                         "(SELECT p.refund_status FROM Payment p WHERE p.booking_id = b.id AND p.payment_type = 'Deposit' ORDER BY p.payment_id LIMIT 1) AS deposit_refund_status, " +

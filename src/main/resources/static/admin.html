@@ -293,7 +293,7 @@
 
     // money still owed on confirmed bookings whose balance is unpaid
     function owing(b) {
-        return b.status === 'Confirmed' ? Number(b.balance_remaining) : 0;
+        return (b.status === 'Confirmed' || b.status === 'Completed') ? Number(b.balance_remaining) : 0;
     }
 
     function remainingText(b) {

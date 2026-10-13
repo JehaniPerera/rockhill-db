@@ -196,13 +196,13 @@
         const cancelled = b.status === 'Cancelled';
         const late = Number(b.late_booking) === 1;               // the due date has passed / event is less than 14 days away
         const overdue = Number(b.is_overdue) === 1;
-        const open = b.status === 'Pending' || b.status === 'Confirmed';
-        const approved = Boolean(Number(b.availability_approved)) || b.status === 'Confirmed';
+        const open = ['Pending', 'Confirmed', 'Completed'].includes(b.status);   // 'Completed' = confirmed by the hall administrator
+        const approved = Boolean(Number(b.availability_approved)) || b.status === 'Confirmed' || b.status === 'Completed';
 
         // which payment is the customer expected to make next?
         nextPayment = null;
         if (!depositPaid && open && approved) nextPayment = late ? 'full' : 'deposit';
-        else if (b.status === 'Confirmed' && depositPaid && !balanceDone) nextPayment = 'balance';
+        else if ((b.status === 'Confirmed' || b.status === 'Completed') && depositPaid && !balanceDone) nextPayment = 'balance';
 
         const canUpload = nextPayment !== null && !pending;
         $('uploadBox').hidden = !canUpload;
@@ -236,6 +236,7 @@
         else if (!approved && !depositPaid && open) hint = 'Waiting for the administrator to approve your date. You can pay after approval.';
         else if (canUpload && latest && latest.status === 'Rejected') hint = 'Your last payment proof was rejected: ' + latest.rejection_reason + ' Please upload a new receipt.';
         else if (nextPayment === 'full') hint = 'Your event is less than 14 days away, so the deposit and the full balance must be paid at once.';
+        else if (!depositPaid && !canUpload) hint = 'Payments are not open for this booking right now. Please contact Rockhill Reception Hall.';
         else if (!depositPaid) hint = 'Pay the deposit by bank transfer, then upload your receipt below.';
         else if (overdue) hint = 'Your balance was due on ' + b.due_date + '. Please pay the full remaining ' + rs(left) + ' and upload your receipt as soon as possible.';
         else if (paidBalance > 0) hint = 'You have paid ' + rs(paidBalance) + ' of the balance. Pay the remaining ' + rs(left) + ' before ' + b.balance_due_date + '.';
