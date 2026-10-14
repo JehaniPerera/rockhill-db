@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Edit Menu')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
+    <p><a th:href="@{/admin/menus}">← Back to menus</a></p>
+    <h1>Edit Menu</h1>
+    <form class="edit-form" th:action="@{/admin/menus/{id}/edit(id=${menu.menuId})}" th:object="${menu}" method="post">
+        <label>Name
+            <input type="text" th:field="*{name}" required>
+        </label>
+        <label>Price per guest
+            <input type="number" step="0.01" th:field="*{pricePerGuest}" required>
+        </label>
+        <button type="submit">Save changes</button>
+        <a class="btn btn-secondary" th:href="@{/admin/menus}">Cancel</a>
+    </form>
+</main>
+</body>
+</html>

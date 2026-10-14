@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' | Rockhill Reception Hall'">Rockhill</title>
+    <link rel="stylesheet" th:href="@{/css/menu-decor.css}">
+    <script th:src="@{/js/menu-decor-nav.js}" defer></script>
+</head>
+<body>
+<header th:fragment="nav" class="site-header">
+    <a class="brand" th:href="@{/menus}">Rockhill Reception Hall</a>
+    <nav>
+        <a id="nav-menus" th:href="@{/menus}">Menus</a>
+        <a id="nav-packages" th:href="@{/packages}">Packages</a>
+        <a th:href="@{/admin/catalog}">Admin</a>
+    </nav>
+</header>
+<div th:fragment="messages">
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+</div>
+</body>
+</html>
