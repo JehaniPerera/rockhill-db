@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rockhill Reception Hall - Admin</title>
+  <link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+<div class="top"><h1>Rockhill Reception Hall &amp; Caterers</h1><span>Administrator</span></div>
+<div class="wrap">
+  <div class="who"><div><strong id="name"></strong> <span class="badge">Admin</span></div><a href="/logout">Sign out</a></div>
+  <h2 class="sec">Administrator tools</h2>
+  <div class="tiles" id="tiles"></div>
+</div>
+<script>
+  var tiles = [
+    ['Booking management', 'Accept, reject, confirm deposit, reschedule, cancel and complete bookings.', '/booking/booking-admin.html'],
+    ['Staff &amp; vendors', 'Manage staff and vendors, availability and assignments.', '/admin/staff/index.html'],
+    ['Catalog management', 'Menus, add-ons, decor and wedding packages.', '/admin/catalog'],
+    ['Payments &amp; billing', 'Review payment proofs, invoices and refunds.', '/admin.html']
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map(function (t) {
+    return '<a class="tile admin" href="' + t[2] + '"><h3>' + t[0] + '</h3><p>' + t[1] + '</p></a>';
+  }).join('');
+  fetch('/api/auth/me', { credentials: 'same-origin' })
+          .then(function (r) { if (r.status === 401) { location.href = '/login.html'; return null; } return r.json(); })
+          .then(function (u) { if (u) document.getElementById('name').textContent = u.fullName; });
+</script>
+</body>
+</html>

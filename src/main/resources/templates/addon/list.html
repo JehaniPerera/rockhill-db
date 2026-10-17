@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Manage Add-ons')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
+    <p><a th:href="@{/admin/catalog}">← Back to catalog</a></p>
+    <h1>Add-on Catalog</h1>
+    <table>
+        <tr>
+            <th>ID</th><th>Name</th><th>Price</th><th>Unit</th>
+            <th>Included in package</th><th>Wedding only</th><th>Status</th><th>Action</th>
+        </tr>
+        <tr th:each="a : ${addons}" th:classappend="${!a.active} ? 'row-disabled'">
+            <td th:text="${a.addonId}"></td>
+            <td th:text="${a.name}"></td>
+            <td th:text="${#numbers.formatDecimal(a.price, 1, 'COMMA', 2, 'POINT')}"></td>
+            <td th:text="${a.unitType}"></td>
+            <td th:text="${a.includedInPackage} ? 'Yes' : 'No'"></td>
+            <td th:text="${a.isWeddingExclusive} ? 'Yes' : 'No'"></td>
+            <td>
+                <span class="badge" th:if="${a.active}">Active</span>
+                <span class="badge badge-off" th:unless="${a.active}">Disabled</span>
+            </td>
+            <td>
+                <a class="btn" th:href="@{/admin/addons/{id}/edit(id=${a.addonId})}">Edit</a>
+                <form th:if="${a.active}" th:action="@{/admin/addons/{id}/disable(id=${a.addonId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn-secondary">Disable</button>
+                </form>
+                <form th:unless="${a.active}" th:action="@{/admin/addons/{id}/enable(id=${a.addonId})}" method="post" style="display:inline">
+                    <button type="submit">Enable</button>
+                </form>
+                <form th:action="@{/admin/addons/{id}/delete(id=${a.addonId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Add a new add-on</h2>
+    <form class="form-row" th:action="@{/admin/addons}" th:object="${newAddOn}" method="post">
+        <input type="text" th:field="*{name}" placeholder="Add-on name" required>
+        <input type="number" step="0.01" th:field="*{price}" placeholder="Price" required>
+        <select th:field="*{unitType}">
+            <option value="per item">per item</option>
+            <option value="per guest">per guest</option>
+        </select>
+        <label><input type="checkbox" th:field="*{includedInPackage}"> Included in package</label>
+        <label><input type="checkbox" th:field="*{isWeddingExclusive}"> Wedding only</label>
+        <button type="submit">Add Add-on</button>
+    </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Edit Pricing Tier')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
+    <p><a th:href="@{/admin/packages/{pid}/tiers(pid=${pkg.packageId})}">← Back to tiers</a></p>
+    <h1 th:text="'Edit Tier - ' + ${pkg.name}"></h1>
+    <form class="edit-form" th:action="@{/admin/packages/{pid}/tiers/{tid}/edit(pid=${pkg.packageId},tid=${tier.tierId})}" th:object="${tier}" method="post">
+        <label>Tier number
+            <input type="number" th:field="*{tierNumber}" required>
+        </label>
+        <label>Min guests
+            <input type="number" th:field="*{minGuests}" required>
+        </label>
+        <label>Max guests
+            <input type="number" th:field="*{maxGuests}" required>
+        </label>
+        <label>Price
+            <input type="number" step="0.01" th:field="*{totalPrice}" required>
+        </label>
+        <button type="submit">Save changes</button>
+        <a class="btn btn-secondary" th:href="@{/admin/packages/{pid}/tiers(pid=${pkg.packageId})}">Cancel</a>
+    </form>
+</main>
+</body>
+</html>
