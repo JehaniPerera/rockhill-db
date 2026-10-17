@@ -129,3 +129,28 @@ INSERT IGNORE INTO booking_decor_selection (booking_id, decor_id, quantity, char
 (8, 8,  18, 2000.00),  -- 160 / 9 = 18 tables
 (8, 10, 1,  0.00);
 
+
+-- 6. PAYMENTS AND INVOICES (Function 4, Fernando)
+-- The tables are created by schema.sql, which runs before this file.
+-- The bookings used here (1, 2, 3, 4, 5, 6, 10) come from section 2.
+INSERT IGNORE INTO Payment (payment_id, booking_id, amount, payment_type, payment_date, payment_status, refund_status, refund_date) VALUES
+(1, 1, 20000.00,  'Deposit', '2026-06-01', 'Partially Paid', 'Refunded',  '2026-08-16'),
+(2, 1, 590000.00, 'Balance', '2026-08-01', 'Fully Paid',     'N/A',       NULL),
+(3, 2, 20000.00,  'Deposit', '2026-07-10', 'Partially Paid', 'Forfeited', '2026-09-06'),
+(4, 2, 465400.00, 'Balance', '2026-08-22', 'Fully Paid',     'N/A',       NULL),
+(5, 3, 20000.00,  'Deposit', '2026-08-20', 'Partially Paid', 'Forfeited', '2026-09-05'),
+(6, 4, 20000.00,  'Deposit', '2026-07-15', 'Partially Paid', 'N/A',       NULL),
+(7, 5, 20000.00,  'Deposit', '2026-09-01', 'Partially Paid', 'N/A',       NULL),
+(8, 6, 20000.00,  'Deposit', '2026-08-30', 'Partially Paid', 'N/A',       NULL),
+(9, 10, 20000.00, 'Deposit', '2026-09-10', 'Partially Paid', 'Refunded',  '2026-10-04'),
+(10, 10, 380000.00, 'Balance', '2026-09-19', 'Fully Paid',   'N/A',       NULL);
+
+INSERT IGNORE INTO Invoice (invoice_id, booking_id, total_amount, issue_date) VALUES
+(1, 1, 590000.00, '2026-08-01'),
+(2, 2, 465400.00, '2026-08-22'),
+(3, 10, 380000.00, '2026-09-19');
+
+-- demo payment proofs: one waiting for approval, one rejected
+INSERT IGNORE INTO PaymentProof (proof_id, booking_id, payment_type, amount, bank_reference, file_name, content_type, status, rejection_reason, submitted_at, reviewed_at) VALUES
+(1, 4, 'Balance', 815000.00, 'BT-20261012-001', '43155aca-14db-4ec6-a7c5-f41105912cdc.png', 'image/png', 'Pending Approval', NULL, '2026-10-12 14:30:00', NULL),
+(2, 6, 'Balance', 970000.00, 'BT-20261010-044', 'missing-demo-file.png', 'image/png', 'Rejected', 'Amount on the slip does not match the balance due. Please upload the correct slip.', '2026-10-10 09:15:00', '2026-10-10 16:40:00');

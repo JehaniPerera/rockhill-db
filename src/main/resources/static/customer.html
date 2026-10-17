@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Booking - Payments</title>
+    <style>
+        :root{--ink:#1b2430;--muted:#5d6877;--bg:#f2f4f7;--card:#fff;--line:#d5dbe3;--accent:#1f5e52;--ok:#1e6b3a;--err:#a32d2d}
+        *{box-sizing:border-box}
+        [hidden]{display:none !important}
+        body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
+        main{max-width:760px;margin:0 auto;padding:28px 16px 48px}
+        h1{font-size:22px;margin:0 0 4px}
+        .sub{color:var(--muted);margin:0 0 20px}
+        .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+        label{display:block;font-weight:600;margin:12px 0 6px}
+        select,input{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff}
+        input[readonly]{background:#f2f4f7;color:var(--muted)}
+        dl{display:grid;grid-template-columns:170px 1fr;gap:6px 12px;margin:0}
+        dt{color:var(--muted)} dd{margin:0;font-weight:600}
+        .actions{display:flex;gap:10px;flex-wrap:wrap}
+        button,.btnlink{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
+        .btnlink{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+        button:disabled{opacity:.45;cursor:not-allowed}
+        button:focus-visible,select:focus-visible,input:focus-visible,.btnlink:focus-visible{outline:3px solid #7fb5a8;outline-offset:2px}
+        .upload{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:8px;background:#fafbfc}
+        .upload h2{margin:0 0 6px}
+        .muted{color:var(--muted);font-size:14px;margin:0}
+        #msg{margin-top:12px;font-weight:600;min-height:1.5em}
+        #hint{margin-top:8px;color:var(--muted);font-size:14px}
+        .ok{color:var(--ok)} .err{color:var(--err)}
+        .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600}
+        .b-green{background:#e3f3e8;color:var(--ok)}
+        .b-amber{background:#fdf0d5;color:#8a5a00}
+        .b-red{background:#f8e0e0;color:var(--err)}
+        .b-grey{background:#e8ebef;color:var(--muted)}
+        h2{font-size:16px;margin:0 0 10px}
+        .wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
+        th{color:var(--muted);font-weight:600}
+        .empty{color:var(--muted)}
+    </style>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<main>
+    <h1>My booking</h1>
+    <p class="sub">Pay by bank transfer, then upload your receipt for approval</p>
+
+    <section class="panel">
+        <label for="bookingSelect" style="margin-top:0">Your booking</label>
+        <select id="bookingSelect" onchange="selectBooking()"></select>
+    </section>
+
+    <section class="panel">
+        <div id="details" class="empty">Loading booking...</div>
+
+        <div id="uploadBox" class="upload" hidden>
+            <h2 id="payFor"></h2>
+            <p class="muted">Pay by bank transfer to the hall's account (ask Rockhill Reception Hall for the account details). Then upload a photo, screenshot or PDF of your receipt or bank deposit slip.</p>
+
+            <div id="amountBox" hidden>
+                <label for="amount">Amount you paid (Rs.)</label>
+                <input id="amount" type="number" min="1" step="0.01" inputmode="decimal">
+                <p id="amountHelp" class="muted" style="margin-top:6px"></p>
+            </div>
+
+            <label for="proofFile">Receipt (JPG, PNG, WEBP or PDF, up to 5 MB)</label>
+            <input id="proofFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+            <label for="reference">Bank reference number (optional)</label>
+            <input id="reference" maxlength="60" autocomplete="off">
+            <div class="actions" style="margin-top:14px">
+                <button id="btnSubmit" onclick="submitProof()">Submit payment proof</button>
+            </div>
+        </div>
+
+        <div class="actions" style="margin-top:16px">
+            <a id="lnkInvoice" class="btnlink" target="_blank" hidden>View invoice</a>
+        </div>
+        <div id="hint"></div>
+        <div id="msg" role="status"></div>
+    </section>
+
+    <section class="panel">
+        <h2>My payment submissions</h2>
+        <div class="wrap">
+            <table>
+                <thead><tr><th>Submitted</th><th>Payment</th><th>Amount</th><th>Status</th><th>Note</th></tr></thead>
+                <tbody id="proofs"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>My payment history (approved payments)</h2>
+        <div class="wrap">
+            <table>
+                <thead><tr><th>Receipt</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+                <tbody id="history"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    const DEPOSIT = 20000;               // separate refundable deposit (same value as the server)
+    const MIN_INSTALLMENT = 10000;       // smallest balance installment (same value as the server)
+    const MAX_BYTES = 5 * 1024 * 1024;   // 5 MB
+    const $ = id => document.getElementById(id);
+    const rs = n => 'Rs. ' + Number(n).toLocaleString();
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const PROOF_BADGE = {'Pending Approval':'b-amber', 'Approved':'b-green', 'Rejected':'b-red'};
+    const TYPE_LABEL = {deposit:'the deposit', balance:'a balance payment', full:'the full amount (deposit + balance)'};
+    let bookings = [];
+    let nextPayment = null;
+
+    function say(text, cls) { const m = $('msg'); m.textContent = text; m.className = cls || ''; }
+
+    async function call(path, method) {
+        const res = await fetch(path, { method: method || 'GET' });
+        const text = await res.text();
+        if (!res.ok) throw new Error(text ? text.slice(0, 200) : ('Error ' + res.status));
+        try { return JSON.parse(text); } catch (e) { return text; }
+    }
+
+    async function loadBookings(keep) {
+        try {
+            const data = await call('/api/payments/bookings');
+            if (!Array.isArray(data)) throw new Error('Unexpected reply from /api/payments/bookings');
+            bookings = data;
+        } catch (e) {
+            bookings = [];
+            say('Could not load bookings: ' + e.message, 'err');
+        }
+        $('bookingSelect').innerHTML = bookings.length
+            ? bookings.map(b => `<option value="${b.booking_id}">#${b.booking_id} - ${esc(b.event_type)} on ${b.event_date}</option>`).join('')
+            : '<option value="">No bookings available</option>';
+        if (keep) $('bookingSelect').value = keep;
+        await showBooking();
+    }
+
+    function selected() {
+        const id = $('bookingSelect').value;
+        return bookings.find(b => String(b.booking_id) === String(id));
+    }
+
+    function selectBooking() { say(''); showBooking(); }
+
+    function paymentState(b, pending) {
+        if (b.status === 'Cancelled') return ['Cancelled', 'b-red'];
+        if (Number(b.balance_paid) > 0) return ['Fully Paid', 'b-green'];
+        if (pending) return ['Pending Approval', 'b-amber'];
+        if (Number(b.is_overdue) === 1) return ['Overdue', 'b-red'];
+        if (Number(b.balance_paid_amount) > 0) return ['Partially paid - balance pending', 'b-amber'];
+        if (Number(b.deposit_paid) > 0) return ['Deposit paid - balance pending', 'b-amber'];
+        return ['Not paid yet', 'b-grey'];
+    }
+
+    // the amount this submission is for (the balance amount is what the customer typed)
+    function amountFor(b, kind) {
+        if (kind === 'deposit') return DEPOSIT;
+        if (kind === 'full') return Number(b.total_price) + DEPOSIT;
+        return Number($('amount').value);
+    }
+
+    async function showBooking() {
+        const b = selected();
+        if (!b) {
+            nextPayment = null;
+            $('uploadBox').hidden = true;
+            $('lnkInvoice').hidden = true;
+            $('hint').textContent = '';
+            $('details').className = 'empty';
+            $('details').textContent = 'Select a booking to see its details.';
+            $('proofs').innerHTML = '';
+            $('history').innerHTML = '';
+            return;
+        }
+
+        // payment proofs of this booking (newest first)
+        let proofs = [], proofError = '';
+        try {
+            proofs = await call('/api/payment-proofs/booking/' + b.booking_id);
+            if (!Array.isArray(proofs)) throw new Error('Unexpected reply');
+        } catch (e) {
+            proofs = [];
+            proofError = e.message;
+        }
+        const pending = proofs.find(p => p.status === 'Pending Approval');
+        const latest = proofs[0];
+
+        const depositPaid = Number(b.deposit_paid) > 0;
+        const balanceDone = Number(b.balance_paid) > 0;          // the whole balance is settled
+        const paidBalance = Number(b.balance_paid_amount);       // installments paid so far
+        const left = Number(b.balance_remaining);                // still to pay on the balance
+        const cancelled = b.status === 'Cancelled';
+        const late = Number(b.late_booking) === 1;               // the due date has passed / event is less than 14 days away
+        const overdue = Number(b.is_overdue) === 1;
+        const open = ['Pending', 'Confirmed', 'Completed'].includes(b.status);   // 'Completed' = confirmed by the hall administrator
+        const approved = Boolean(Number(b.availability_approved)) || b.status === 'Confirmed' || b.status === 'Completed';
+
+        // which payment is the customer expected to make next?
+        nextPayment = null;
+        if (!depositPaid && open && approved) nextPayment = late ? 'full' : 'deposit';
+        else if ((b.status === 'Confirmed' || b.status === 'Completed') && depositPaid && !balanceDone) nextPayment = 'balance';
+
+        const canUpload = nextPayment !== null && !pending;
+        $('uploadBox').hidden = !canUpload;
+        $('btnSubmit').disabled = false;
+        $('amountBox').hidden = true;
+        if (canUpload) {
+            if (nextPayment === 'deposit') {
+                $('payFor').textContent = 'Pay the deposit: ' + rs(DEPOSIT);
+            } else if (nextPayment === 'full') {
+                $('payFor').textContent = 'Pay the full amount (deposit + balance): ' + rs(Number(b.total_price) + DEPOSIT);
+            } else {
+                $('payFor').textContent = 'Pay the balance: ' + rs(left) + ' remaining';
+                $('amountBox').hidden = false;
+                $('amount').value = left;               // starts as "pay everything that is left"
+                $('amount').max = left;
+                $('amount').readOnly = late;            // after the due date only the full amount is accepted
+                $('amountHelp').textContent = late
+                    ? 'The due date has passed, so the full remaining amount must be paid at once.'
+                    : 'You can pay in installments: at least ' + rs(MIN_INSTALLMENT) + ' each time, or everything that is left. The whole balance must be paid by ' + b.balance_due_date + '.';
+            }
+        }
+
+        const link = $('lnkInvoice');
+        link.hidden = Number(b.has_invoice) === 0;
+        link.href = 'invoice.html?booking=' + b.booking_id;
+
+        let hint;
+        if (cancelled) hint = 'This booking is cancelled, so no payments can be made.';
+        else if (balanceDone) hint = 'Everything is paid. Thank you!';
+        else if (pending) hint = 'Your payment proof is waiting for the administrator to approve it. The result will appear here.';
+        else if (!approved && !depositPaid && open) hint = 'Waiting for the administrator to approve your date. You can pay after approval.';
+        else if (canUpload && latest && latest.status === 'Rejected') hint = 'Your last payment proof was rejected: ' + latest.rejection_reason + ' Please upload a new receipt.';
+        else if (nextPayment === 'full') hint = 'Your event is less than 14 days away, so the deposit and the full balance must be paid at once.';
+        else if (!depositPaid && !canUpload) hint = 'Payments are not open for this booking right now. Please contact Rockhill Reception Hall.';
+        else if (!depositPaid) hint = 'Pay the deposit by bank transfer, then upload your receipt below.';
+        else if (overdue) hint = 'Your balance was due on ' + b.due_date + '. Please pay the full remaining ' + rs(left) + ' and upload your receipt as soon as possible.';
+        else if (paidBalance > 0) hint = 'You have paid ' + rs(paidBalance) + ' of the balance. Pay the remaining ' + rs(left) + ' before ' + b.balance_due_date + '.';
+        else hint = 'Deposit approved. Pay the balance before ' + b.balance_due_date + ' (in installments if you wish) and upload your receipt.';
+        $('hint').textContent = hint;
+
+        const [label, cls] = paymentState(b, Boolean(pending));
+        const dueText = overdue ? 'Overdue - was due ' + b.due_date
+            : (late ? 'Immediately (event is less than 14 days away)' : b.balance_due_date);
+        const dueRow = (cancelled || balanceDone) ? '' : `<dt>Balance due by</dt><dd>${dueText}</dd>`;
+
+        $('details').className = '';
+        $('details').innerHTML = `<dl>
+      <dt>Event</dt><dd>${esc(b.event_type)} on ${b.event_date} (${b.guest_count} guests)</dd>
+      <dt>Booking status</dt><dd>${esc(b.status)}</dd>
+      <dt>Payment status</dt><dd><span class="badge ${cls}">${label}</span></dd>
+      <dt>Total price</dt><dd>${rs(b.total_price)}</dd>
+      <dt>Balance paid so far</dt><dd>${rs(paidBalance)}</dd>
+      <dt>Balance remaining</dt><dd>${cancelled ? '-' : rs(left)}</dd>
+      <dt>All approved payments</dt><dd>${rs(b.paid_total)} (includes the ${rs(DEPOSIT)} deposit)</dd>
+      ${dueRow}</dl>`;
+
+        $('proofs').innerHTML = proofError
+            ? `<tr><td colspan="5" class="err">Could not load your submissions: ${esc(proofError)}</td></tr>`
+            : proofs.length ? proofs.map(p => `<tr>
+        <td>${esc(p.submitted_at)}</td><td>${esc(p.payment_type)}</td><td>${rs(p.amount)}</td>
+        <td><span class="badge ${PROOF_BADGE[p.status] || 'b-grey'}">${esc(p.status)}</span></td>
+        <td>${p.status === 'Rejected' ? esc(p.rejection_reason) : (p.status === 'Pending Approval' ? 'Waiting for the administrator' : '-')}</td></tr>`).join('')
+                : '<tr><td colspan="5" class="empty">No receipts uploaded yet.</td></tr>';
+
+        await loadHistory(b.booking_id);
+    }
+
+    async function loadHistory(id) {
+        const body = $('history');
+        try {
+            const rows = await call('/api/payments/history/' + id);
+            if (!Array.isArray(rows)) throw new Error('Unexpected reply');
+            body.innerHTML = rows.length ? rows.map(p => `<tr>
+        <td><a href="receipt.html?payment=${p.payment_id}" target="_blank">${esc(p.receipt_no)}</a></td>
+        <td>${esc(p.payment_type)}</td><td>${rs(p.amount)}</td>
+        <td>${p.payment_date}</td><td>${esc(p.payment_status)}</td></tr>`).join('')
+                : '<tr><td colspan="5" class="empty">No approved payments yet.</td></tr>';
+        } catch (e) {
+            body.innerHTML = `<tr><td colspan="5" class="err">Could not load history: ${esc(e.message)}</td></tr>`;
+        }
+    }
+
+    async function submitProof() {
+        const b = selected();
+        if (!b || !nextPayment) return;
+
+        let amountText = '';
+        if (nextPayment === 'balance') {
+            amountText = $('amount').value.trim();
+            const amt = Number(amountText);
+            const left = Number(b.balance_remaining);
+            if (!amountText || !(amt > 0)) { say('Please type the amount you paid.', 'err'); return; }
+            if (amt > left + 0.001) { say('The amount is more than the remaining balance (' + rs(left) + ').', 'err'); return; }
+            if (amt < left - 0.001 && amt < MIN_INSTALLMENT) {
+                say('The smallest installment is ' + rs(MIN_INSTALLMENT) + ' (or pay everything that is left).', 'err');
+                return;
+            }
+        }
+
+        const file = $('proofFile').files[0];
+        if (!file) { say('Please choose your receipt file first.', 'err'); return; }
+        if (file.size > MAX_BYTES) { say('The file is too large. Please choose a file smaller than 5 MB.', 'err'); return; }
+        if (!confirm('Submit this receipt for ' + TYPE_LABEL[nextPayment] + ' (' + rs(amountFor(b, nextPayment)) + ')?')) return;
+
+        const form = new FormData();
+        form.append('type', nextPayment);
+        if (nextPayment === 'balance') form.append('amount', amountText);
+        form.append('reference', $('reference').value.trim());
+        form.append('file', file);
+
+        $('btnSubmit').disabled = true;
+        try {
+            const res = await fetch('/api/payment-proofs/submit/' + b.booking_id, { method: 'POST', body: form });
+            const text = await res.text();
+            if (!res.ok) throw new Error(text ? text.slice(0, 200) : ('Error ' + res.status));
+            say(text, 'ok');
+            $('proofFile').value = '';
+            $('reference').value = '';
+        } catch (e) {
+            say('Upload failed: ' + e.message, 'err');
+            $('btnSubmit').disabled = false;
+            return;
+        }
+        await loadBookings(b.booking_id);
+    }
+
+    loadBookings();
+</script>
+</body>
+</html>
