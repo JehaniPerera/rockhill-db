@@ -57,20 +57,6 @@ INSERT IGNORE INTO decor_option (decor_id, category, name, price, is_singular) V
 (9,  'Color Theme',      'Red & Dark Contrast',                     0.00,     1),
 (10, 'Color Theme',      'White & Gold',                            0.00,     1);
 
-
--- ============================================================================
--- ORDER OF THIS FILE (parents before children, so foreign keys are satisfied):
---   1. Catalog (Function 2)
---   2. Customers and bookings (Function 1)
---   3. Add-on and decor choices (Function 2)       -- needs bookings
---   4. Staff and staff availability (Function 3)
---   5. Staff assignments (Function 3)              -- needs bookings and staff
---   6. Payments (Function 4)                       -- NOT RECEIVED YET
--- Every statement uses INSERT IGNORE with fixed ids, so restarting the app
--- does not fail or duplicate rows.
--- ============================================================================
-
-
 -- 2. CUSTOMERS AND BOOKINGS (Function 1, Kawmadee)
 -- NOTE: the customer table's key column is `id` (JPA entity Customer), not customer_id.
 
@@ -143,62 +129,3 @@ INSERT IGNORE INTO booking_decor_selection (booking_id, decor_id, quantity, char
 (8, 8,  18, 2000.00),  -- 160 / 9 = 18 tables
 (8, 10, 1,  0.00);
 
-
--- 4. STAFF AND STAFF AVAILABILITY (Function 3, Perera)
-
-INSERT IGNORE INTO staff (staff_id, name, role, type, contact) VALUES
-(1,'Nimal Senanayake','Event Coordinator','Internal','0771100001'),
-(2,'Kasun Bandara','Head Waiter','Internal','0771100002'),
-(3,'Chamari Jayasinghe','Waitress','Internal','0771100003'),
-(4,'Ruwan Samarasinghe','Head Cook','Internal','0771100004'),
-(5,'Sampath Rathnayake','Security','Internal','0771100005'),
-(6,'Dilan Wijesekara','DJ','Vendor','0771100006'),
-(7,'Udara Flora & Decor','Decorator','Vendor','0771100007'),
-(8,'Malith Gunasekara','Waiter','Internal','0771100008'),
-(9,'Helakala Mandapaya','Dancing Group','Vendor','0772200001'),
-(10,'Helakala Mandapaya','Jaya Mangala Gatha','Vendor','0772200002');
-
-INSERT IGNORE INTO staff_availability (availability_id, staff_id, unavailable_date, reason) VALUES
-(1,3, '2026-10-31', 'Leave'),
-(2,5, '2026-11-20', 'Leave'),
-(3,8, '2026-12-01', 'Family commitment');
-
-
--- 5. STAFF ASSIGNMENTS (Function 3, Perera) - needs bookings 1, 2, 4, 5, 6
-
-INSERT IGNORE INTO staff_assignment (booking_id, staff_id, assigned_date) VALUES
-(1,1,'2026-08-15'),(1,2,'2026-08-15'),(1,3,'2026-08-15'),
-(1,7,'2026-08-15'),(1,9,'2026-08-15'),(1,10,'2026-08-15'),
-(2,1,'2026-09-05'),(2,2,'2026-09-05'),(2,3,'2026-09-05'),(2,4,'2026-09-05'),
-(4,1,'2026-10-24'),(4,2,'2026-10-24'),(4,6,'2026-10-24'),(4,7,'2026-10-24'),
-(4,8,'2026-10-24'),(4,9,'2026-10-24'),(4,10,'2026-10-24'),
-(5,1,'2026-11-14'),(5,3,'2026-11-14'),(5,5,'2026-11-14'),(5,8,'2026-11-14'),
-(6,1,'2026-12-12'),(6,2,'2026-12-12'),(6,6,'2026-12-12'),
-(6,7,'2026-12-12'),(6,9,'2026-12-12'),(6,10,'2026-12-12');
-
-
--- 6. PAYMENTS (Function 4, Fernando)
--- (paste the INSERTs here; they need the bookings from section 2)
-
--- 6. PAYMENTS (Function 4)
-INSERT IGNORE INTO Payment (payment_id, booking_id, amount, payment_type, payment_date, payment_status, refund_status, refund_date) VALUES
-(1, 1, 20000.00,  'Deposit', '2026-06-01', 'Partially Paid', 'Refunded',  '2026-08-16'),
-(2, 1, 590000.00, 'Balance', '2026-08-01', 'Fully Paid',     'N/A',       NULL),
-(3, 2, 20000.00,  'Deposit', '2026-07-10', 'Partially Paid', 'Forfeited', '2026-09-06'),
-(4, 2, 465400.00, 'Balance', '2026-08-22', 'Fully Paid',     'N/A',       NULL),
-(5, 3, 20000.00,  'Deposit', '2026-08-20', 'Partially Paid', 'Forfeited', '2026-09-05'),
-(6, 4, 20000.00,  'Deposit', '2026-07-15', 'Partially Paid', 'N/A',       NULL),
-(7, 5, 20000.00,  'Deposit', '2026-09-01', 'Partially Paid', 'N/A',       NULL),
-(8, 6, 20000.00,  'Deposit', '2026-08-30', 'Partially Paid', 'N/A',       NULL),
-(9, 10, 20000.00, 'Deposit', '2026-09-10', 'Partially Paid', 'Refunded',  '2026-10-04'),
-(10, 10, 380000.00, 'Balance', '2026-09-19', 'Fully Paid',   'N/A',       NULL);
-
-INSERT IGNORE INTO Invoice (invoice_id, booking_id, total_amount, issue_date) VALUES
-(1, 1, 590000.00, '2026-08-01'),
-(2, 2, 465400.00, '2026-08-22'),
-(3, 10, 380000.00, '2026-09-19');
-
--- demo payment proofs: one waiting for approval, one rejected
-INSERT IGNORE INTO PaymentProof (proof_id, booking_id, payment_type, amount, bank_reference, file_name, content_type, status, rejection_reason, submitted_at, reviewed_at) VALUES
-(1, 4, 'Balance', 815000.00, 'BT-20261012-001', '43155aca-14db-4ec6-a7c5-f41105912cdc.png', 'image/png', 'Pending Approval', NULL, '2026-10-12 14:30:00', NULL),
-(2, 6, 'Balance', 970000.00, 'BT-20261010-044', 'missing-demo-file.png', 'image/png', 'Rejected', 'Amount on the slip does not match the balance due. Please upload the correct slip.', '2026-10-10 09:15:00', '2026-10-10 16:40:00');
