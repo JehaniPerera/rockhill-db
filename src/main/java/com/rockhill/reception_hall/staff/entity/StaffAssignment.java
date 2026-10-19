@@ -1,6 +1,7 @@
 package com.rockhill.reception_hall.staff.entity;
 
 import jakarta.persistence.*;
+import com.rockhill.reception_hall.booking.model.Booking;
 
 import java.time.LocalDate;
 
