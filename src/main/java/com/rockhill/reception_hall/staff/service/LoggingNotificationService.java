@@ -1,6 +1,6 @@
 package com.rockhill.reception_hall.staff.service;
 
-import com.rockhill.reception_hall.staff.entity.Booking;
+import com.rockhill.reception_hall.booking.model.Booking;
 import com.rockhill.reception_hall.staff.entity.Staff;
 import org.springframework.stereotype.Service;
 
@@ -13,12 +13,12 @@ public class LoggingNotificationService implements NotificationService {
     @Override
     public void notifyAssigned(Staff staff, Booking booking) {
         log.info("NOTIFY {} ({}): you are assigned to booking #{} on {}",
-                staff.getName(), staff.getContact(), booking.getBookingId(), booking.getEventDate());
+                staff.getName(), staff.getContact(), booking.getId(), booking.getEventDate());
     }
 
     @Override
     public void notifyRemoved(Staff staff, Booking booking) {
         log.info("NOTIFY {} ({}): you are no longer assigned to booking #{} on {}",
-                staff.getName(), staff.getContact(), booking.getBookingId(), booking.getEventDate());
+                staff.getName(), staff.getContact(), booking.getId(), booking.getEventDate());
     }
 }

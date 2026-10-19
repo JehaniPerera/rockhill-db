@@ -2,13 +2,13 @@ package com.rockhill.reception_hall.staff.service;
 
 import com.rockhill.reception_hall.staff.dto.DamageReportRequest;
 import com.rockhill.reception_hall.staff.dto.DamageReportResponse;
-import com.rockhill.reception_hall.staff.entity.Booking;
-import com.rockhill.reception_hall.staff.entity.BookingStatus;
+import com.rockhill.reception_hall.booking.model.Booking;
+import com.rockhill.reception_hall.booking.model.BookingStatus;
 import com.rockhill.reception_hall.staff.entity.HallDamageReport;
 import com.rockhill.reception_hall.staff.exception.BadRequestException;
 import com.rockhill.reception_hall.staff.exception.ConflictException;
 import com.rockhill.reception_hall.staff.exception.ResourceNotFoundException;
-import com.rockhill.reception_hall.staff.repository.BookingRepository;
+import com.rockhill.reception_hall.booking.repository.BookingRepository;
 import com.rockhill.reception_hall.staff.repository.HallDamageReportRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -61,6 +61,7 @@ public class DamageReportService {
         HallDamageReport report = new HallDamageReport();
         report.setBookingId(bookingId);
         apply(report, request);
+        syncBooking(booking, request);
         try {
             return DamageReportResponse.from(reportRepository.saveAndFlush(report));
         } catch (DataIntegrityViolationException ex) {
@@ -76,6 +77,7 @@ public class DamageReportService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No damage report has been submitted for booking " + bookingId));
         apply(report, request);
+        syncBooking(booking, request);
         return DamageReportResponse.from(reportRepository.saveAndFlush(report));
     }
 
@@ -86,6 +88,14 @@ public class DamageReportService {
         String notes = request.notes() == null ? "" : request.notes().trim();
         report.setNotes(notes.isEmpty() ? null : notes);
         report.setReportedAt(LocalDateTime.now());
+    }
+
+    /** Payments decides the Rs. 20,000 deposit refund from Booking.venueDamaged, so keep it equal to this report. */
+    private void syncBooking(Booking booking, DamageReportRequest request) {
+        boolean damaged = Boolean.TRUE.equals(request.damaged());
+        booking.setVenueDamaged(damaged);
+        String notes = request.notes() == null ? "" : request.notes().trim();
+        booking.setVenueDamageNotes(damaged && !notes.isEmpty() ? notes : null);
     }
 
     private void validate(DamageReportRequest request) {
@@ -103,7 +113,7 @@ public class DamageReportService {
     private void requireCompleted(Booking booking) {
         if (booking.getStatus() != BookingStatus.COMPLETED) {
             throw new BadRequestException("Damage can only be reported for a Completed booking (current status: "
-                    + booking.getStatus().getDbValue() + ")");
+                    + booking.getStatus() + ")");
         }
     }
 

@@ -11,7 +11,7 @@ import java.util.List;
 
 /** Staff admin: was the hall damaged after the event? (read by the Payment function) */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/staff")   // under /api/staff/** so the demo's existing admin-only rule covers it
 public class DamageReportController {
 
     private final DamageReportService damageReportService;

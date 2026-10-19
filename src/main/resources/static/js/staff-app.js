@@ -93,7 +93,7 @@ $('aSave').onclick = () => run(async () => {
 
 /* ---------- bookings (shared) ---------- */
 async function loadBookings() {
-  bookings = await api('/bookings');
+  bookings = await api('/staff/bookings');
   const opts = bookings.length
     ? bookings.map(b => `<option value="${b.bookingId}">#${b.bookingId} - ${esc(b.eventDate)} (${esc(b.status)})</option>`).join('')
     : '<option value="">No bookings found</option>';
@@ -141,7 +141,7 @@ window.reassign = oldId => run(async () => {
 
 /* ---------- damage reports ---------- */
 async function loadDamage() {
-  const list = await api('/damage-reports');
+  const list = await api('/staff/damage-reports');
   $('damageTable').innerHTML = list.length
     ? `<table><tr><th>Booking</th><th>Damaged</th><th>Notes</th><th>Reported at</th></tr>${list.map(r => `<tr><td>#${r.bookingId}</td>
        <td><span class="tag ${r.damaged ? 'Cancelled' : 'Confirmed'}">${r.damaged ? 'Yes' : 'No'}</span></td><td>${esc(r.notes)}</td><td>${esc((r.reportedAt || '').replace('T', ' ').slice(0, 16))}</td></tr>`).join('')}</table>`
@@ -151,8 +151,8 @@ $('dSave').onclick = () => run(async () => {
   const id = $('dSel').value; if (!id) throw new Error('Select a booking');
   const body = {damaged: $('dDamaged').value === 'true', notes: $('dNotes').value.trim() || null};
   let exists = true;
-  try { await api(`/bookings/${id}/damage-report`); } catch (e) { exists = false; }
-  await api(`/bookings/${id}/damage-report`, {method: exists ? 'PUT' : 'POST', body});
+  try { await api(`/staff/bookings/${id}/damage-report`); } catch (e) { exists = false; }
+  await api(`/staff/bookings/${id}/damage-report`, {method: exists ? 'PUT' : 'POST', body});
   toast(exists ? 'Report updated' : 'Report saved'); await loadDamage();
 });
 
