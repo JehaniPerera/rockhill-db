@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Table Staff (staff_id, name, role, type, contact) + composition with StaffAvailability. */
 @Entity
 @Table(name = "Staff")
 public class Staff {

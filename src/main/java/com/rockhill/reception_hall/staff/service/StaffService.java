@@ -2,7 +2,7 @@ package com.rockhill.reception_hall.staff.service;
 
 import com.rockhill.reception_hall.staff.dto.StaffRequest;
 import com.rockhill.reception_hall.staff.dto.StaffResponse;
-import com.rockhill.reception_hall.staff.entity.BookingStatus;
+import com.rockhill.reception_hall.booking.model.BookingStatus;
 import com.rockhill.reception_hall.staff.entity.Staff;
 import com.rockhill.reception_hall.staff.exception.ConflictException;
 import com.rockhill.reception_hall.staff.exception.ResourceNotFoundException;

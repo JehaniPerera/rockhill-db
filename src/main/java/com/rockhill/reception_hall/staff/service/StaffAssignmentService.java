@@ -4,15 +4,15 @@ import com.rockhill.reception_hall.staff.dto.AssignRequest;
 import com.rockhill.reception_hall.staff.dto.AssignmentResponse;
 import com.rockhill.reception_hall.staff.dto.ReassignRequest;
 import com.rockhill.reception_hall.staff.dto.StaffResponse;
-import com.rockhill.reception_hall.staff.entity.Booking;
-import com.rockhill.reception_hall.staff.entity.BookingStatus;
+import com.rockhill.reception_hall.booking.model.Booking;
+import com.rockhill.reception_hall.booking.model.BookingStatus;
 import com.rockhill.reception_hall.staff.entity.Staff;
 import com.rockhill.reception_hall.staff.entity.StaffAssignment;
 import com.rockhill.reception_hall.staff.entity.StaffAssignmentId;
 import com.rockhill.reception_hall.staff.exception.BadRequestException;
 import com.rockhill.reception_hall.staff.exception.ConflictException;
 import com.rockhill.reception_hall.staff.exception.ResourceNotFoundException;
-import com.rockhill.reception_hall.staff.repository.BookingRepository;
+import com.rockhill.reception_hall.booking.repository.BookingRepository;
 import com.rockhill.reception_hall.staff.repository.StaffAssignmentRepository;
 import com.rockhill.reception_hall.staff.repository.StaffAvailabilityRepository;
 import com.rockhill.reception_hall.staff.repository.StaffRepository;
@@ -53,7 +53,7 @@ public class StaffAssignmentService {
     @Transactional(readOnly = true)
     public List<AssignmentResponse> listForBooking(Long bookingId) {
         findBooking(bookingId);
-        return assignmentRepository.findByBookingBookingId(bookingId)
+        return assignmentRepository.findByBookingId(bookingId)
                 .stream().map(AssignmentResponse::from).toList();
     }
 
@@ -108,14 +108,14 @@ public class StaffAssignmentService {
      * Note: StaffAssignment already has ON DELETE CASCADE on booking_id in the SQL script.
      */
     public void releaseForBooking(Long bookingId) {
-        assignmentRepository.deleteByBookingBookingId(bookingId);
+        assignmentRepository.deleteByBookingId(bookingId);
     }
 
     // ---------------- helpers ----------------
 
     private StaffAssignment build(Booking booking, Staff staff) {
         StaffAssignment a = new StaffAssignment();
-        a.setId(new StaffAssignmentId(booking.getBookingId(), staff.getStaffId()));
+        a.setId(new StaffAssignmentId(booking.getId(), staff.getStaffId()));
         a.setBooking(booking);
         a.setStaff(staff);
         a.setAssignedDate(booking.getEventDate());
@@ -136,7 +136,7 @@ public class StaffAssignmentService {
     private void requireConfirmed(Booking booking) {
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new BadRequestException("Staff can only be assigned to a Confirmed booking (current status: "
-                    + booking.getStatus().getDbValue() + ")");
+                    + booking.getStatus() + ")");
         }
     }
 

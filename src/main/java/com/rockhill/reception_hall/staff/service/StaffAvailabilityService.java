@@ -2,7 +2,7 @@ package com.rockhill.reception_hall.staff.service;
 
 import com.rockhill.reception_hall.staff.dto.UnavailabilityRequest;
 import com.rockhill.reception_hall.staff.dto.UnavailabilityResponse;
-import com.rockhill.reception_hall.staff.entity.BookingStatus;
+import com.rockhill.reception_hall.booking.model.BookingStatus;
 import com.rockhill.reception_hall.staff.entity.Staff;
 import com.rockhill.reception_hall.staff.entity.StaffAvailability;
 import com.rockhill.reception_hall.staff.exception.ConflictException;

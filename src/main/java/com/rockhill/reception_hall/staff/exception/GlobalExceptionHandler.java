@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Turns exceptions into the "error message" alternate flows of the use case scenarios. */
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.rockhill.reception_hall.staff")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
