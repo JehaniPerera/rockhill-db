@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My Booking - Payments</title>
     <style>
-        :root{--ink:#1b2430;--muted:#5d6877;--bg:#f2f4f7;--card:#fff;--line:#d5dbe3;--accent:#1f5e52;--ok:#1e6b3a;--err:#a32d2d}
+        :root{--ink:#1a1a1a;--muted:#6b645c;--bg:#ffffff;--card:#fff;--line:#e4dfd3;--accent:#1a1a1a;--ok:#1e6b3a;--err:#a32d2d}
         *{box-sizing:border-box}
         [hidden]{display:none !important}
         body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
@@ -15,15 +15,15 @@
         .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
         label{display:block;font-weight:600;margin:12px 0 6px}
         select,input{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff}
-        input[readonly]{background:#f2f4f7;color:var(--muted)}
+        input[readonly]{background:#f5f3ee;color:var(--muted)}
         dl{display:grid;grid-template-columns:170px 1fr;gap:6px 12px;margin:0}
         dt{color:var(--muted)} dd{margin:0;font-weight:600}
         .actions{display:flex;gap:10px;flex-wrap:wrap}
         button,.btnlink{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
         .btnlink{background:#fff;color:var(--accent);border:1px solid var(--accent)}
         button:disabled{opacity:.45;cursor:not-allowed}
-        button:focus-visible,select:focus-visible,input:focus-visible,.btnlink:focus-visible{outline:3px solid #7fb5a8;outline-offset:2px}
-        .upload{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:8px;background:#fafbfc}
+        button:focus-visible,select:focus-visible,input:focus-visible,.btnlink:focus-visible{outline:3px solid #b8922e;outline-offset:2px}
+        .upload{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:8px;background:#f5f3ee}
         .upload h2{margin:0 0 6px}
         .muted{color:var(--muted);font-size:14px;margin:0}
         #msg{margin-top:12px;font-weight:600;min-height:1.5em}
@@ -33,7 +33,7 @@
         .b-green{background:#e3f3e8;color:var(--ok)}
         .b-amber{background:#fdf0d5;color:#8a5a00}
         .b-red{background:#f8e0e0;color:var(--err)}
-        .b-grey{background:#e8ebef;color:var(--muted)}
+        .b-grey{background:#e4dfd3;color:var(--muted)}
         h2{font-size:16px;margin:0 0 10px}
         .wrap{overflow-x:auto}
         table{width:100%;border-collapse:collapse}
@@ -45,6 +45,7 @@
 </head>
 <body>
 <main>
+    <p><a href="/index.html">&larr; Home</a></p>
     <h1>My booking</h1>
     <p class="sub">Pay by bank transfer, then upload your receipt for approval</p>
 
@@ -332,5 +333,6 @@
 
     loadBookings();
 </script>
+<script src="/js/portal.js" defer></script>
 </body>
 </html>

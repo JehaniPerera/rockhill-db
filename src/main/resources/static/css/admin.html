@@ -9,12 +9,12 @@
         body { background: #f1f3f8; }
         .layout { display: flex; min-height: 100vh; }
         .side { width: 230px; background: #fff; box-shadow: 1px 0 6px rgba(0,0,0,.08); padding: 18px 14px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-        .brand { font-weight: bold; font-size: 17px; color: #5a1f2b; padding: 6px 8px 16px; line-height: 1.25; }
+        .brand { font-weight: bold; font-size: 17px; color: #1a1a1a; padding: 6px 8px 16px; line-height: 1.25; }
         .brand small { display: block; font-weight: normal; font-size: 12px; color: #777; }
         .side .group { font-size: 11px; text-transform: uppercase; color: #999; margin: 16px 8px 6px; letter-spacing: .5px; }
         .side a, .side button.nav { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; background: none; border: 0; color: #444; padding: 10px 12px; border-radius: 8px; font: inherit; font-size: 14px; text-decoration: none; cursor: pointer; margin-bottom: 2px; }
-        .side a:hover, .side button.nav:hover { background: #f4ecee; }
-        .side button.nav.active { background: #5a1f2b; color: #fff; }
+        .side a:hover, .side button.nav:hover { background: #f5f3ee; }
+        .side button.nav.active { background: #1a1a1a; color: #fff; }
         .side .count { font-size: 12px; background: #eee; color: #444; border-radius: 10px; padding: 1px 8px; }
         .side button.nav.active .count { background: rgba(255,255,255,.25); color: #fff; }
         .content { flex: 1; min-width: 0; padding: 0 22px 30px; }
@@ -33,7 +33,7 @@
         .g-green { background: linear-gradient(135deg, #43d19e, #28a96b); }
         .g-purple { background: linear-gradient(135deg, #a770ef, #6a5ae0); }
         .g-red { background: linear-gradient(135deg, #ff7a7a, #e0435b); }
-        .gt.active { outline: 3px solid #5a1f2b; outline-offset: 2px; }
+        .gt.active { outline: 3px solid #1a1a1a; outline-offset: 2px; }
         .panels { display: grid; grid-template-columns: 300px 1fr; gap: 16px; margin-bottom: 20px; }
         .panel { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
         .panel h3 { margin: 0 0 10px; font-size: 15px; color: #2b2b2b; }
@@ -51,7 +51,7 @@
         .alerts li { margin: 4px 0; }
         .alerts .bad { color: #b3261e; font-weight: bold; }
         .toolbar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; justify-content: space-between; }
-        .toolbar h3 { margin: 0; font-size: 17px; color: #5a1f2b; }
+        .toolbar h3 { margin: 0; font-size: 17px; color: #1a1a1a; }
         .toolbar .box { min-width: 240px; }
         .hint { font-size: 13px; color: #666; margin: 6px 0 10px; }
         .overdue { color: #b3261e; font-weight: bold; }
@@ -70,10 +70,11 @@
 <div class="layout">
     <aside class="side">
         <div class="brand">Rockhill Reception Hall &amp; Caterers<small>Booking admin</small></div>
+        <div class="group"><a href="/admin/index.html" style="color:inherit">&larr; Admin home</a></div>
         <div class="group">Bookings</div>
         <div id="nav"></div>
         <div class="group">Pages</div>
-        <a href="/booking/booking-index.html">Home</a>
+        <a href="/index.html">Home</a>
         <a href="/booking/wedding-booking.html">Wedding booking</a>
         <a href="/booking/event-booking.html">Event booking</a>
         <a href="/booking/my-bookings.html">My bookings</a>
@@ -370,5 +371,6 @@
     document.getElementById('search').addEventListener('input', renderTable);
     load();
 </script>
+<script src="/js/portal.js" defer></script>
 </body>
 </html>

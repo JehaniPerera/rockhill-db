@@ -33,12 +33,16 @@
     });
 
     var bar = document.createElement('div');
-    bar.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;background:#5b2a2a;color:#fff;' +
-      'padding:8px 14px;border-radius:20px;font:13px system-ui,Arial,sans-serif;box-shadow:0 2px 8px #0004;';
+    bar.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;background:#1a1a1a;color:#fff;' +
+      'padding:8px 14px;border-radius:20px;font:13px system-ui,Arial,sans-serif;border:1px solid #b8922e;box-shadow:0 2px 8px #0004;';
+    bar.className = 'portal-bar';
+    var ps = document.createElement('style');
+    ps.textContent = '@media print{.portal-bar{display:none!important}}';
+    document.head.appendChild(ps);
     var name = document.createElement('span');
     name.textContent = user.fullName + ' (' + (admin ? 'Admin' : 'Customer') + ')';
     bar.appendChild(name);
-    [['Home', '/'], ['Sign out', '/logout']].forEach(function (l) {
+    [['Home', admin ? '/admin/index.html' : '/index.html'], ['Sign out', '/logout']].forEach(function (l) {
       var a = document.createElement('a');
       a.href = l[1];
       a.textContent = l[0];

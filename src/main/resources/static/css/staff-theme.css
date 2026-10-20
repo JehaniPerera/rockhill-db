@@ -1,7 +1,7 @@
 /* Colours and fonts match function 1 (booking-theme.css) and function 2 (menu-decor.css):
-   burgundy #5a1f2b + cream #f4f1ec from booking, gold #b8922e + Georgia headings from menu/decor. */
-:root{--bg:#f4f1ec;--card:#fff;--text:#2b2b2b;--muted:#6b645c;--line:#e4dfd3;
-      --accent:#5a1f2b;--accent-hover:#7a2a3b;--accent2:#f1e8dc;--gold:#b8922e;--nav-link:#f3d9b1;
+   burgundy #1a1a1a + cream #ffffff from booking, gold #b8922e + Georgia headings from menu/decor. */
+:root{--bg:#ffffff;--card:#fff;--text:#2b2b2b;--muted:#6b645c;--line:#e4dfd3;
+      --accent:#1a1a1a;--accent-hover:#b8922e;--accent2:#f5f3ee;--gold:#b8922e;--nav-link:#ffffff;
       --ok:#1e6b34;--bad:#b3261e;--warn:#7a5b00}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.5 Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}

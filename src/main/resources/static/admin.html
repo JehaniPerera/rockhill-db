@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hall Administrator - Payments &amp; Billing</title>
     <style>
-        :root{--ink:#1b2430;--muted:#5d6877;--bg:#f2f4f7;--card:#fff;--line:#d5dbe3;--accent:#1f5e52;--ok:#1e6b3a;--err:#a32d2d}
+        :root{--ink:#1a1a1a;--muted:#6b645c;--bg:#ffffff;--card:#fff;--line:#e4dfd3;--accent:#1a1a1a;--ok:#1e6b3a;--err:#a32d2d}
         *{box-sizing:border-box}
         [hidden]{display:none !important}
         body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
@@ -25,7 +25,7 @@
         button.small{padding:4px 10px;font-size:13px}
         button.danger{background:#fff;color:var(--err);border:1px solid var(--err)}
         button:disabled{opacity:.45;cursor:not-allowed}
-        button:focus-visible,select:focus-visible,input:focus-visible,.btnlink:focus-visible{outline:3px solid #7fb5a8;outline-offset:2px}
+        button:focus-visible,select:focus-visible,input:focus-visible,.btnlink:focus-visible{outline:3px solid #b8922e;outline-offset:2px}
         #msg,#pmsg{margin-top:12px;font-weight:600;min-height:1.5em}
         #hint{margin-top:8px;color:var(--muted);font-size:14px}
         .ok{color:var(--ok)} .err{color:var(--err)}
@@ -33,7 +33,7 @@
         .b-green{background:#e3f3e8;color:var(--ok)}
         .b-amber{background:#fdf0d5;color:#8a5a00}
         .b-red{background:#f8e0e0;color:var(--err)}
-        .b-grey{background:#e8ebef;color:var(--muted)}
+        .b-grey{background:#e4dfd3;color:var(--muted)}
         .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
         .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;text-align:left;color:var(--ink);font-weight:400}
         .card b{display:block;font-size:22px}
@@ -46,7 +46,7 @@
         th{color:var(--muted);font-weight:600}
         td a{color:var(--accent);font-weight:600;margin-right:6px}
         .nowrap{white-space:nowrap}
-        tr.row{cursor:pointer} tr.row:hover{background:#f7f9fb} tr.sel{background:#e9f3f0}
+        tr.row{cursor:pointer} tr.row:hover{background:#f5f3ee} tr.sel{background:#f5f3ee}
         .empty{color:var(--muted)}
         .remind-msg{font-weight:600;min-width:240px}
         tr.r-overdue{background:#fdf1f1} tr.r-pending{background:#fffaf0}
@@ -61,6 +61,7 @@
             <h1>Payments &amp; Billing</h1>
             <p class="sub">Hall Administrator</p>
         </div>
+        <a class="secondary" href="/admin/index.html" style="margin-right:8px;padding:8px 14px;border-radius:6px;text-decoration:none;border:1px solid #1a1a1a;color:#1a1a1a">&larr; Admin home</a>
         <button id="btnLogout" class="secondary" onclick="logout()" hidden>Log out</button>
     </div>
 
@@ -447,5 +448,6 @@
 
     reload();
 </script>
+<script src="/js/portal.js" defer></script>
 </body>
 </html>

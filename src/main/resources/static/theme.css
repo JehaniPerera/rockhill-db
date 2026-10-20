@@ -4,8 +4,8 @@
    Loaded AFTER the page's own <style>, so it overrides it. No HTML/JS changes needed. */
 
 :root{
-    --ink:#14211d; --muted:#5b6b66; --bg:#eef3f0; --card:#fff; --line:#dbe5e0;
-    --accent:#17483d; --ok:#1e6b3a; --err:#a32d2d; --brass:#b8893b;
+    --ink:#1a1a1a; --muted:#5b6b66; --bg:#ffffff; --card:#fff; --line:#dbe5e0;
+    --accent:#1a1a1a; --ok:#1e6b3a; --err:#a32d2d; --brass:#b8922e;
     --shadow:0 1px 2px rgba(20,33,29,.05), 0 10px 26px -14px rgba(20,33,29,.18);
 }
 
@@ -29,9 +29,9 @@ h2{font-size:18px;font-weight:600;margin-bottom:14px}
 input,select{padding:10px 12px;border:1px solid #c9d6d0;border-radius:8px;transition:border-color .15s, box-shadow .15s}
 input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,72,61,.15)}
 input[type=checkbox]{width:16px;height:16px;padding:0;accent-color:var(--accent)}
-input[type=file]{padding:8px;background:#fafcfb;border:1px dashed #9db8ae}
+input[type=file]{padding:8px;background:#f5f3ee;border:1px dashed #9db8ae}
 input[type=file]::file-selector-button{margin-right:12px;border:0;border-radius:6px;padding:8px 14px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}
-input[readonly]{background:#f1f5f3}
+input[readonly]{background:#f5f3ee}
 label{font-size:14px}
 
 /* ---------- buttons ---------- */
@@ -66,16 +66,16 @@ button:not(:disabled):active{transform:translateY(1px)}
 .b-green{background:#e1f2e7}
 .b-amber{background:#fbf0d6}
 .b-red{background:#fae3e3}
-.b-grey{background:#e9eeec}
+.b-grey{background:#e4dfd3}
 
 /* ---------- tables ---------- */
-th{background:#f4f8f6;font-size:12.5px;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{background:#f5f3ee;font-size:12.5px;padding:10px 12px;border-bottom:1px solid var(--line)}
 th:first-child{border-top-left-radius:8px}
 th:last-child{border-top-right-radius:8px}
-td{padding:12px;border-bottom:1px solid #edf2ef}
+td{padding:12px;border-bottom:1px solid #f5f3ee}
 tbody tr:last-child td{border-bottom:0}
 tr.row{transition:background .12s}
-tr.row:hover{background:#f4f9f6}
+tr.row:hover{background:#f5f3ee}
 tr.sel{background:#e4f1ec}
 tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 tr.r-overdue{background:#fdf3f3}
@@ -85,16 +85,16 @@ td a:hover{text-decoration:underline}
 
 /* ---------- booking details list ---------- */
 dl{grid-template-columns:190px 1fr;gap:0 16px}
-dt,dd{padding:9px 0;border-bottom:1px solid #edf2ef}
+dt,dd{padding:9px 0;border-bottom:1px solid #f5f3ee}
 dt{font-size:14px}
 dt:last-of-type,dd:last-of-type{border-bottom:0}
 
 /* ---------- customer: payment upload box ---------- */
-.upload{border:1.5px dashed #a9c4ba;background:#f3f9f6;border-radius:12px;padding:18px 20px}
+.upload{border:1.5px dashed #a9c4ba;background:#f5f3ee;border-radius:12px;padding:18px 20px}
 .upload h2{font-size:17px;margin-bottom:8px}
 
 /* ---------- helper text ---------- */
-#hint{background:#f4f8f6;border-left:3px solid var(--brass);border-radius:8px;padding:10px 14px;margin-top:14px}
+#hint{background:#f5f3ee;border-left:3px solid var(--brass);border-radius:8px;padding:10px 14px;margin-top:14px}
 #hint:empty{display:none}
 
 /* ---------- phones ---------- */
