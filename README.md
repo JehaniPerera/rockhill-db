@@ -1,21 +1,40 @@
-# rockhill-db
-reception hall booking and management system
+# Rockhill Reception Hall Booking & Management System
 
-## Getting Started
+SE2012_GRP_26 - Spring Boot, Thymeleaf and MySQL web application for Rockhill Reception Hall & Caterers.
 
-1. Clone the repo and open the folder in IntelliJ **as a Project** (not "Open as File").
-2. Wait for Maven to finish resolving dependencies (progress bar at the bottom).
-3. Install and start a local MySQL-compatible server — XAMPP's MySQL or standalone MySQL both work. Each person runs their own; this is not shared between machines.
-4. In MySQL Workbench (or phpMyAdmin), run `00_setup.sql` against your local server. Confirm a `rockhill` schema/database now exists.
-5. Copy `src/main/resources/application.properties.example` to a new file named `application.properties` in the same folder. Fill in your own DB username/password if different from the example. This file is personal per machine — don't commit it.
-6. Open `ReceptionHallApplication.java` and click the green ▶️ run button. Look for `Started ReceptionHallApplication` in the console with no red errors.
-7. Visit `http://localhost:8081` in a browser — a "Whitelabel Error Page" is expected and means it's working.
+| Function | Owner |
+|---|---|
+| Booking & Event Scheduling | Kawmadee R.L.D. (IT25104035) |
+| Package, Menu & Decor Selection | Dinuji S.A.P. (IT25103187) |
+| Staff & Vendor Assignment | Perera L.D.U.J. (IT25300121) |
+| Payments & Billing | Fernando W.S.H. (IT25102808) |
+
+## How to run it
+
+Requirements: JDK 17, Maven (the project includes `mvnw`), IntelliJ IDEA, and a local MySQL server (standalone MySQL or XAMPP).
+
+1. Clone the repo and open the folder in IntelliJ **as a Project** (not "Open as File"). Use the `demo5` branch.
+2. Wait for Maven to finish downloading dependencies (progress bar at the bottom).
+3. Start your local MySQL server (port 3306). Each person runs their own; nothing is shared between machines.
+4. `src/main/resources/application.properties` is already in the repo, so there is nothing to copy. It uses MySQL user `root` with an empty password, which is the XAMPP default. If your MySQL has a password, do **not** edit the file: in IntelliJ open Run > Edit Configurations, add the environment variable `DB_PASSWORD=your_password` (and `DB_USERNAME=...` if your user is not `root`), and run again. If you already had your own `application.properties` from before, delete it before you `git pull`.
+5. You do not need to create the database. The app creates `rockhill_app` on the first start and fills it with sample data from `schema.sql` and `data.sql`. If an older run left a broken `rockhill_app` behind, drop it in MySQL Workbench (`DROP DATABASE rockhill_app;`) and start again.
+6. Open `ReceptionHallApplication.java` and click the green run button. Wait for `Started ReceptionHallApplication` with no red errors. A line about "MySQL 5.5.5" is harmless.
+7. Open `http://localhost:8081`. You are sent to the login page. Ask the team for the demo admin login, or register as a customer.
+
+If the app does not start, the first red line in the console is the real error: "Access denied for user" means a wrong or missing `DB_PASSWORD`, and "Communications link failure" means MySQL is not running.
+
+## Pages
+
+- Customers: home (`/index.html`), book a wedding or event, choose package or menu, add-ons and decor, my bookings, my payments (`/customer.html`).
+- Admin: `/admin/index.html` links to booking management, catalog management, staff and vendors, and payments and billing.
 
 ## Code structure
-Each person's function lives in its own package under `src/main/java/com/rockhill/receptionhall/` — for example `menu`, `booking`, `staff`, `billing`. Don't put your code in someone else's package.
+
+All code lives under `src/main/java/com/rockhill/reception_hall/`, one package per function: `booking`, `menu`, `staff`, `payment`, plus `portal` for login and roles. Do not put your code in someone else's package.
 
 ## Git workflow
+
 - `git pull` before you start working each session.
-- Prefer your own branch: `git checkout -b feature/your-function-name`.
-- Commit small, working chunks with clear messages.
-- `git push`, then merge into `main` once it runs cleanly for you.
+- Work on your own branch (`feature/your-function`) and merge into the shared integration branch (`demo5`) with a pull request.
+- Commit small, working chunks with clear messages. Add files by name; never run `git add .`.
+- Never put a real password in `application.properties` (use the `DB_PASSWORD` environment variable), and never commit the `uploads/` folder.
