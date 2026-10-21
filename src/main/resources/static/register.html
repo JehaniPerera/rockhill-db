@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create account - Rockhill Reception Hall</title>
+<link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+<div class="center">
+  <form class="panel" id="form">
+    <h1>Create your account</h1>
+    <p class="sub">Customer accounts only. Staff and administrators are created by the hall.</p>
+    <div id="msg" class="msg"></div>
+    <label>Full name<input id="fullName" required maxlength="100"></label>
+    <label>Phone<input id="phone" required placeholder="0771234567"></label>
+    <label>Email<input id="email" type="email" required></label>
+    <label>Password (at least 8 characters)<input id="password" type="password" required minlength="8"></label>
+    <label>Confirm password<input id="confirm" type="password" required></label>
+    <button class="primary" type="submit">Create account</button>
+    <p class="alt">Already registered? <a href="/login.html">Sign in</a></p>
+  </form>
+</div>
+<script>
+  var box = document.getElementById('msg');
+  function show(text) { box.textContent = text; box.className = 'msg show err'; }
+  document.getElementById('form').onsubmit = async function (e) {
+    e.preventDefault();
+    var v = function (id) { return document.getElementById(id).value; };
+    if (v('password') !== v('confirm')) { show('The two passwords do not match.'); return; }
+    try {
+      var res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: v('fullName'), phone: v('phone'), email: v('email'), password: v('password') })
+      });
+      if (res.status === 201) { location.href = '/login.html?registered'; return; }
+      var data = await res.json().catch(function () { return null; });
+      show((data && (data.message || data.error)) || 'Could not create the account.');
+    } catch (err) {
+      show('Could not reach the server.');
+    }
+  };
+</script>
+</body>
+</html>

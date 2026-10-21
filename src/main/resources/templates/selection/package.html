@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Choose Package')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container" id="choice-page" data-kind="package" th:attr="data-booking-id=${bookingId}">
+    <h1>Choose Your Wedding Package</h1>
+    <p id="booking-info">Loading your booking...</p>
+    <div id="msg"></div>
+    <p id="choice-note"></p>
+
+    <div class="cards" id="choice-cards"></div>
+
+    <div class="summary-box">
+        <div><span id="est-base-label">Package price</span>: <strong id="est-base">-</strong></div>
+        <div id="est-surcharge-row" style="display:none">Low guest charge: <strong id="est-surcharge">-</strong></div>
+        <div>Estimated total so far: <strong id="est-total">-</strong></div>
+    </div>
+</main>
+<script th:src="@{/js/menu-decor-selection.js}"></script>
+</body>
+</html>

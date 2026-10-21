@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rockhill Reception Hall - Home</title>
+<link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+<div class="top"><h1>Rockhill Reception Hall &amp; Caterers</h1><span>Customer home</span></div>
+<div class="wrap">
+  <div class="who"><div><strong id="name"></strong> <span class="badge">Customer</span></div><a href="/logout">Sign out</a></div>
+  <h2 class="sec">What would you like to do?</h2>
+  <div class="tiles" id="tiles"></div>
+</div>
+<script>
+  var tiles = [
+    ['Wedding booking', 'Choose a package, add-ons and decor.', '/booking/wedding-booking.html'],
+    ['Event booking', 'Birthdays, corporate and other events.', '/booking/event-booking.html'],
+    ['My bookings', 'Look up, reschedule or cancel a booking.', '/booking/my-bookings.html'],
+    ['Browse menus', 'See the menus we offer.', '/menus'],
+    ['Browse packages', 'See the wedding packages and their prices.', '/packages'],
+    ['My payments', 'Pay your deposit or balance and view invoices.', '/customer.html']
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map(function (t) {
+    return '<a class="tile" href="' + t[2] + '"><h3>' + t[0] + '</h3><p>' + t[1] + '</p></a>';
+  }).join('');
+  fetch('/api/auth/me', { credentials: 'same-origin' })
+    .then(function (r) { if (r.status === 401) { location.href = '/login.html'; return null; } return r.json(); })
+    .then(function (u) { if (u) document.getElementById('name').textContent = u.fullName; });
+</script>
+</body>
+</html>

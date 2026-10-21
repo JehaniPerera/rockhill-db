@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Choose Add-ons')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container" id="addons-page" th:attr="data-booking-id=${bookingId}">
+    <h1>Choose Add-ons</h1>
+    <p id="booking-info">Loading your booking...</p>
+    <div id="msg"></div>
+
+    <table>
+        <thead>
+        <tr><th>Add-on</th><th>Price</th><th>Quantity</th><th>Line total</th><th>Action</th></tr>
+        </thead>
+        <tbody id="addon-rows"></tbody>
+    </table>
+
+    <div class="summary-box">
+        <div>Add-ons total: <strong id="est-addons">-</strong></div>
+        <div>Estimated total: <strong id="est-total">-</strong></div>
+    </div>
+</main>
+<script th:src="@{/js/menu-decor-selection.js}"></script>
+</body>
+</html>

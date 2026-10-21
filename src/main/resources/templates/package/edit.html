@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Edit Package')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
+    <p><a th:href="@{/admin/packages}">← Back to packages</a></p>
+    <h1>Edit Package</h1>
+    <form class="edit-form" th:action="@{/admin/packages/{id}/edit(id=${pkg.packageId})}" th:object="${pkg}" method="post">
+        <label>Name
+            <input type="text" th:field="*{name}" required>
+        </label>
+        <label>Description
+            <input type="text" th:field="*{description}">
+        </label>
+        <button type="submit">Save changes</button>
+        <a class="btn btn-secondary" th:href="@{/admin/packages}">Cancel</a>
+    </form>
+</main>
+</body>
+</html>

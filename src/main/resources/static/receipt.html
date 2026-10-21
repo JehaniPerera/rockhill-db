@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Receipt - Rockhill Reception Hall &amp; Caterers</title>
+    <style>
+        :root{--ink:#1a1a1a;--muted:#6b645c;--bg:#ffffff;--line:#e4dfd3;--accent:#1a1a1a;--err:#a32d2d}
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,Arial,sans-serif}
+        main{max-width:620px;margin:0 auto;padding:28px 16px 48px}
+        .sheet{background:#fff;border:1px solid var(--line);border-radius:8px;padding:28px}
+        .head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:18px}
+        h1{font-size:22px;margin:0;color:var(--accent)}
+        .muted{color:var(--muted);font-size:14px}
+        .title{font-size:20px;font-weight:700;text-align:right}
+        dl{display:grid;grid-template-columns:170px 1fr;gap:6px 12px;margin:0 0 18px}
+        dt{color:var(--muted)} dd{margin:0;font-weight:600}
+        .amount{display:flex;justify-content:space-between;border-top:2px solid var(--ink);padding-top:10px;font-weight:700;font-size:18px}
+        .note{margin-top:18px;padding:10px 12px;background:#f5f3ee;border-radius:6px;font-size:13px;color:var(--muted)}
+        .err{color:var(--err);font-weight:600}
+        .tools{margin-bottom:14px}
+        button{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}
+        @media print{ body{background:#fff} .tools{display:none} main{padding:0} .sheet{border:0;padding:0} }
+    </style>
+</head>
+<body>
+<main>
+    <div class="tools"><button onclick="window.print()">Print / Save as PDF</button></div>
+    <div class="sheet" id="sheet">Loading receipt...</div>
+</main>
+
+<script>
+    const $ = id => document.getElementById(id);
+    const rs = n => 'Rs. ' + Number(n).toLocaleString();
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    async function load() {
+        const id = new URLSearchParams(location.search).get('payment');
+        if (!id) { $('sheet').innerHTML = '<p class="err">No payment selected.</p>'; return; }
+        try {
+            const res = await fetch('/api/payments/receipt/' + encodeURIComponent(id));
+            const text = await res.text();
+            if (!res.ok) throw new Error(text || ('Error ' + res.status));
+            const r = JSON.parse(text);
+            const depositNote = r.payment_type === 'Deposit'
+                ? ' The Rs. 20,000 deposit is a separate refundable advance. It is refunded the day after the event if there is no damage to the venue.'
+                : '';
+            $('sheet').innerHTML = `
+        <div class="head">
+          <div>
+            <h1>Rockhill Reception Hall &amp; Caterers</h1>
+            <div class="muted">03, Sri Seelalankara Mawatha, Mullegama, Homagama<br>Hotline / WhatsApp: 070 500 0090</div>
+          </div>
+          <div class="title">RECEIPT<div class="muted">${esc(r.receipt_no)} &middot; ${r.payment_date}</div></div>
+        </div>
+        <dl>
+          <dt>Customer</dt><dd>${esc(r.customer_name)}</dd>
+          <dt>Phone</dt><dd>${esc(r.customer_phone)}</dd>
+          <dt>Booking</dt><dd>#${r.booking_id}</dd>
+          <dt>Event</dt><dd>${esc(r.event_type)} on ${r.event_date}</dd>
+          <dt>Payment type</dt><dd>${esc(r.payment_type)}</dd>
+          <dt>Payment status</dt><dd>${esc(r.payment_status)}</dd>
+          <dt>Balance remaining after this payment</dt><dd>${rs(r.balance_remaining)}</dd>
+        </dl>
+        <div class="amount"><span>Amount paid</span><span>${rs(r.amount)}</span></div>
+        <div class="note">Thank you for your payment.${depositNote}</div>`;
+        } catch (e) {
+            $('sheet').innerHTML = '<p class="err">' + esc(e.message) + '</p>';
+        }
+    }
+    load();
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/menu-layout :: head('Manage Packages')}"></head>
+<body>
+<header th:replace="~{fragments/menu-layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/menu-layout :: messages}"></div>
+    <p><a th:href="@{/admin/catalog}">← Back to catalog</a></p>
+    <h1>Package Catalog</h1>
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Description</th><th>Status</th><th>Action</th></tr>
+        <tr th:each="p : ${packages}" th:classappend="${!p.active} ? 'row-disabled'">
+            <td th:text="${p.packageId}"></td>
+            <td th:text="${p.name}"></td>
+            <td th:text="${p.description}"></td>
+            <td>
+                <span class="badge" th:if="${p.active}">Active</span>
+                <span class="badge badge-off" th:unless="${p.active}">Disabled</span>
+            </td>
+            <td>
+                <a class="btn" th:href="@{/admin/packages/{id}/edit(id=${p.packageId})}">Edit</a>
+                <a class="btn" th:href="@{/admin/packages/{id}/tiers(id=${p.packageId})}">Manage tiers</a>
+                <form th:if="${p.active}" th:action="@{/admin/packages/{id}/disable(id=${p.packageId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn-secondary">Disable</button>
+                </form>
+                <form th:unless="${p.active}" th:action="@{/admin/packages/{id}/enable(id=${p.packageId})}" method="post" style="display:inline">
+                    <button type="submit">Enable</button>
+                </form>
+                <form th:action="@{/admin/packages/{id}/delete(id=${p.packageId})}" method="post" style="display:inline">
+                    <button type="submit" class="btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Add a package</h2>
+    <form class="form-row" th:action="@{/admin/packages}" th:object="${newPackage}" method="post">
+        <input type="text" th:field="*{name}" placeholder="Package name" required>
+        <input type="text" th:field="*{description}" placeholder="Description" size="50">
+        <button type="submit">Add Package</button>
+    </form>
+</main>
+</body>
+</html>

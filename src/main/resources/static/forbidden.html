@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No access - Rockhill Reception Hall</title>
+<link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+<div class="center">
+  <div class="panel">
+    <h1>No access</h1>
+    <p class="sub" id="msg">You do not have access to this page.</p>
+    <p class="alt"><a href="/">Back to your home page</a></p>
+  </div>
+</div>
+<script>
+  fetch('/api/auth/me', { credentials: 'same-origin' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (u) {
+      if (!u) return;
+      document.getElementById('msg').textContent = u.role === 'ADMIN'
+        ? 'This page is for customers. Administrators use the admin pages.'
+        : 'This page is only for the hall administrator.';
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in - Rockhill Reception Hall</title>
+<link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+<div class="center">
+  <form class="panel" method="post" action="/login">
+    <h1>Rockhill Reception Hall</h1>
+    <p class="sub">Sign in to continue</p>
+    <div id="msg" class="msg"></div>
+    <label>Email<input type="email" name="username" required autofocus></label>
+    <label>Password<input type="password" name="password" required></label>
+    <button class="primary" type="submit">Sign in</button>
+    <p class="alt">New customer? <a href="/register.html">Create an account</a></p>
+  </form>
+</div>
+<script>
+  var q = location.search, box = document.getElementById('msg');
+  function show(text, cls) { box.textContent = text; box.className = 'msg show ' + cls; }
+  if (q.indexOf('error') >= 0) show('Wrong email or password.', 'err');
+  else if (q.indexOf('logout') >= 0) show('You have signed out.', 'ok');
+  else if (q.indexOf('registered') >= 0) show('Account created. Please sign in.', 'ok');
+</script>
+</body>
+</html>
